@@ -81,6 +81,10 @@ jobs:
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+          echo "Checking SSH private key..."
+          ssh-keygen -y -f ~/.ssh/erebus > /dev/null
+          echo "SSH private key is valid."
+
       - name: Deploy to Erebus
         if: steps.sync.outputs.deploy == 'true'
         env:
@@ -88,20 +92,32 @@ jobs:
           SERVER_USER: ${{ secrets.EREBUS_USER }}
         shell: bash
         run: |
+          set -euo pipefail
+
+          ssh \
+            -i ~/.ssh/erebus \
+            -o IdentitiesOnly=yes \
+            -o PreferredAuthentications=publickey \
+            -o PasswordAuthentication=no \
+            -o KbdInteractiveAuthentication=no \
+            -o BatchMode=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'bash -s' <<'REMOTE'
           set -Eeuo pipefail
 
-APP_DIR="/srv/apps/amirlab"
+          APP_DIR="/srv/apps/amirlab"
 
-export PATH="$HOME/.nvm/versions/node/v26.7.0/bin:$PATH"
+          export PATH="$HOME/.nvm/versions/node/v26.7.0/bin:$PATH"
 
-echo "Node: $(node -v)"
-echo "npm: $(npm -v)"
-echo "npx: $(command -v npx)"
-echo "pnpm: $(command -v pnpm || true)"
+          echo "Node: $(node -v)"
+          echo "npm: $(npm -v)"
+          echo "npx: $(command -v npx)"
+          echo "pnpm: $(command -v pnpm || true)"
+          echo "pm2: $(command -v pm2)"
 
-pnpm10() {
-  npx --yes pnpm@10.34.5 "$@"
-}
+          pnpm10() {
+            npx --yes pnpm@10.34.5 "$@"
+          }
 
           cd "$APP_DIR"
 
@@ -136,12 +152,17 @@ pnpm10() {
             rm -f backend/package-lock.json
             rm -f frontend/package-lock.json
 
+            echo "Reinstalling previous backend dependencies"
             pnpm10 --dir backend install
+
+            echo "Reinstalling previous frontend dependencies"
             pnpm10 --dir frontend install
 
+            echo "Rebuilding previous backend"
             pnpm10 --dir backend run build
             BACKEND_ROLLBACK="$?"
 
+            echo "Rebuilding previous frontend"
             pnpm10 --dir frontend run build
             FRONTEND_ROLLBACK="$?"
 
@@ -170,33 +191,26 @@ pnpm10() {
           rm -f frontend/package-lock.json
 
           echo "Installing backend dependencies"
-
           pnpm10 --dir backend install
 
           echo "Installing frontend dependencies"
-
           pnpm10 --dir frontend install
 
           echo "Building backend"
-
           pnpm10 --dir backend run build
 
           echo "Building frontend"
-
           pnpm10 --dir frontend run build
 
           echo "Restarting backend"
-
           pm2 restart amirlab-api --update-env
 
           echo "Restarting frontend"
-
           pm2 restart amirlab-web --update-env
 
           sleep 3
 
           echo "Checking frontend"
-
           curl -fsS http://127.0.0.1:3008/ > /dev/null
 
           pm2 save
@@ -205,7 +219,6 @@ pnpm10() {
 
           echo "Deployment successful."
           echo "Running commit: $NEW_SHA"
-
           REMOTE
 
       - name: Nothing to deploy
