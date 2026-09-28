@@ -88,21 +88,20 @@ jobs:
           SERVER_USER: ${{ secrets.EREBUS_USER }}
         shell: bash
         run: |
-          set -euo pipefail
-
-          ssh \
-            -i ~/.ssh/erebus \
-            -o IdentitiesOnly=yes \
-            "$SERVER_USER@$SERVER_HOST" \
-            'bash -s' <<'REMOTE'
-
           set -Eeuo pipefail
 
-          APP_DIR="/srv/apps/amirlab"
+APP_DIR="/srv/apps/amirlab"
 
-          pnpm10() {
-            npx --yes pnpm@10.34.5 "$@"
-          }
+export PATH="$HOME/.nvm/versions/node/v26.7.0/bin:$PATH"
+
+echo "Node: $(node -v)"
+echo "npm: $(npm -v)"
+echo "npx: $(command -v npx)"
+echo "pnpm: $(command -v pnpm || true)"
+
+pnpm10() {
+  npx --yes pnpm@10.34.5 "$@"
+}
 
           cd "$APP_DIR"
 
