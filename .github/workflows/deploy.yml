@@ -1,0 +1,214 @@
+name: Sync upstream and deploy
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: amirlab-production
+  cancel-in-progress: false
+
+jobs:
+  sync-and-deploy:
+    name: Sync and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check upstream and sync fork
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Event: $EVENT_NAME"
+
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]
+          then
+            BEFORE="$(gh api "repos/$REPO/commits/main" --jq '.sha')"
+
+            echo "Fork before sync: $BEFORE"
+
+            gh api \
+              --method POST \
+              "repos/$REPO/merge-upstream" \
+              -f branch=main
+
+            AFTER="$(gh api "repos/$REPO/commits/main" --jq '.sha')"
+
+            echo "Fork after sync: $AFTER"
+
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]
+            then
+              echo "deploy=true" >> "$GITHUB_OUTPUT"
+            elif [ "$BEFORE" != "$AFTER" ]
+            then
+              echo "deploy=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure SSH
+        if: steps.sync.outputs.deploy == 'true'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EREBUS_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.EREBUS_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/erebus
+          chmod 600 ~/.ssh/erebus
+
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy to Erebus
+        if: steps.sync.outputs.deploy == 'true'
+        env:
+          SERVER_HOST: ${{ secrets.EREBUS_HOST }}
+          SERVER_USER: ${{ secrets.EREBUS_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh \
+            -i ~/.ssh/erebus \
+            -o IdentitiesOnly=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            'bash -s' <<'REMOTE'
+
+          set -Eeuo pipefail
+
+          APP_DIR="/srv/apps/amirlab"
+
+          pnpm10() {
+            npx --yes pnpm@10.34.5 "$@"
+          }
+
+          cd "$APP_DIR"
+
+          OLD_SHA="$(git rev-parse HEAD)"
+
+          echo "Currently deployed: $OLD_SHA"
+
+          git fetch origin main
+
+          NEW_SHA="$(git rev-parse origin/main)"
+
+          echo "Available on fork: $NEW_SHA"
+
+          if [ "$OLD_SHA" = "$NEW_SHA" ]
+          then
+            echo "Erebus is already running the latest commit."
+            exit 0
+          fi
+
+          rollback() {
+            EXIT_CODE="$?"
+
+            trap - ERR
+            set +e
+
+            echo "Deployment failed."
+            echo "Rolling back to $OLD_SHA"
+
+            git reset --hard "$OLD_SHA"
+
+            rm -f package-lock.json
+            rm -f backend/package-lock.json
+            rm -f frontend/package-lock.json
+
+            pnpm10 --dir backend install
+            pnpm10 --dir frontend install
+
+            pnpm10 --dir backend run build
+            BACKEND_ROLLBACK="$?"
+
+            pnpm10 --dir frontend run build
+            FRONTEND_ROLLBACK="$?"
+
+            if [ "$BACKEND_ROLLBACK" -eq 0 ] && [ "$FRONTEND_ROLLBACK" -eq 0 ]
+            then
+              pm2 restart amirlab-api --update-env
+              pm2 restart amirlab-web --update-env
+
+              echo "Rollback completed."
+            else
+              echo "Rollback build had problems."
+              echo "Existing PM2 processes were left untouched where possible."
+            fi
+
+            exit "$EXIT_CODE"
+          }
+
+          trap rollback ERR
+
+          echo "Deploying $NEW_SHA"
+
+          git reset --hard "$NEW_SHA"
+
+          rm -f package-lock.json
+          rm -f backend/package-lock.json
+          rm -f frontend/package-lock.json
+
+          echo "Installing backend dependencies"
+
+          pnpm10 --dir backend install
+
+          echo "Installing frontend dependencies"
+
+          pnpm10 --dir frontend install
+
+          echo "Building backend"
+
+          pnpm10 --dir backend run build
+
+          echo "Building frontend"
+
+          pnpm10 --dir frontend run build
+
+          echo "Restarting backend"
+
+          pm2 restart amirlab-api --update-env
+
+          echo "Restarting frontend"
+
+          pm2 restart amirlab-web --update-env
+
+          sleep 3
+
+          echo "Checking frontend"
+
+          curl -fsS http://127.0.0.1:3008/ > /dev/null
+
+          pm2 save
+
+          trap - ERR
+
+          echo "Deployment successful."
+          echo "Running commit: $NEW_SHA"
+
+          REMOTE
+
+      - name: Nothing to deploy
+        if: steps.sync.outputs.deploy != 'true'
+        run: echo "Upstream has not changed. Nothing to deploy."
