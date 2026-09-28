@@ -106,18 +106,44 @@ jobs:
           set -Eeuo pipefail
 
           APP_DIR="/srv/apps/amirlab"
+          CONFIG_DIR="$HOME/.config/amirlab"
 
           export PATH="$HOME/.nvm/versions/node/v26.7.0/bin:$PATH"
+
+          pnpm10() {
+            npx --yes pnpm@10.34.5 "$@"
+          }
+
+          restore_env() {
+            rm -f "$APP_DIR/backend/.env"
+            rm -f "$APP_DIR/frontend/.env.production"
+
+            ln -s "$CONFIG_DIR/backend.env" \
+              "$APP_DIR/backend/.env"
+
+            ln -s "$CONFIG_DIR/frontend.env.production" \
+              "$APP_DIR/frontend/.env.production"
+          }
+
+          echo "Checking production config files"
+
+          if [ ! -f "$CONFIG_DIR/backend.env" ]
+          then
+            echo "Missing $CONFIG_DIR/backend.env"
+            exit 1
+          fi
+
+          if [ ! -f "$CONFIG_DIR/frontend.env.production" ]
+          then
+            echo "Missing $CONFIG_DIR/frontend.env.production"
+            exit 1
+          fi
 
           echo "Node: $(node -v)"
           echo "npm: $(npm -v)"
           echo "npx: $(command -v npx)"
           echo "pnpm: $(command -v pnpm || true)"
           echo "pm2: $(command -v pm2)"
-
-          pnpm10() {
-            npx --yes pnpm@10.34.5 "$@"
-          }
 
           cd "$APP_DIR"
 
@@ -148,6 +174,8 @@ jobs:
 
             git reset --hard "$OLD_SHA"
 
+            restore_env
+
             rm -f package-lock.json
             rm -f backend/package-lock.json
             rm -f frontend/package-lock.json
@@ -171,6 +199,24 @@ jobs:
               pm2 restart amirlab-api --update-env
               pm2 restart amirlab-web --update-env
 
+              sleep 3
+
+              curl -fsS \
+                --retry 10 \
+                --retry-delay 2 \
+                --retry-connrefused \
+                http://127.0.0.1:3007/api/health \
+                > /dev/null
+
+              curl -fsS \
+                --retry 10 \
+                --retry-delay 2 \
+                --retry-connrefused \
+                http://127.0.0.1:3008/ \
+                > /dev/null
+
+              pm2 save
+
               echo "Rollback completed."
             else
               echo "Rollback build had problems."
@@ -185,6 +231,8 @@ jobs:
           echo "Deploying $NEW_SHA"
 
           git reset --hard "$NEW_SHA"
+
+          restore_env
 
           rm -f package-lock.json
           rm -f backend/package-lock.json
@@ -208,10 +256,28 @@ jobs:
           echo "Restarting frontend"
           pm2 restart amirlab-web --update-env
 
-          sleep 3
+          echo "Checking backend"
+          curl -fsS \
+            --retry 10 \
+            --retry-delay 2 \
+            --retry-connrefused \
+            http://127.0.0.1:3007/api/health \
+            > /dev/null
 
           echo "Checking frontend"
-          curl -fsS http://127.0.0.1:3008/ > /dev/null
+          curl -fsS \
+            --retry 10 \
+            --retry-delay 2 \
+            --retry-connrefused \
+            http://127.0.0.1:3008/ \
+            > /dev/null
+
+          echo "Checking public API"
+          curl -fsS \
+            --retry 5 \
+            --retry-delay 2 \
+            https://amirlab.org/api/health \
+            > /dev/null
 
           pm2 save
 
