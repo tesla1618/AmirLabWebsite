@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/api-exception.filter';
+import { isAllowedCorsOrigin } from './config/cors';
 import type { Environment } from './config/environment';
 
 async function bootstrap() {
@@ -15,9 +16,19 @@ async function bootstrap() {
   app.setGlobalPrefix('api', {
     exclude: [{ path: '', method: RequestMethod.GET }],
   });
+  const configuredFrontendOrigins = config.get('frontendOrigins', {
+    infer: true,
+  });
   app.enableCors({
     credentials: true,
-    origin: config.get('frontendOrigins', { infer: true }),
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allowed?: boolean) => void,
+    ) =>
+      callback(
+        null,
+        !origin || isAllowedCorsOrigin(origin, configuredFrontendOrigins),
+      ),
   });
   app.use(helmet());
   app.use(cookieParser());
