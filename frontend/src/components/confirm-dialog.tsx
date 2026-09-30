@@ -49,10 +49,10 @@ export function ConfirmDialog({
       }}
       ref={dialog}
     >
-      <div className="relative animate-[dialog-enter_220ms_cubic-bezier(.22,1,.36,1)_both] rounded-panel border border-line bg-surface p-8 shadow-[0_30px_90px_color-mix(in_srgb,var(--ink)_28%,transparent)] motion-reduce:animate-none">
+      <div className="relative animate-[dialog-enter_220ms_cubic-bezier(.22,1,.36,1)_both] rounded-dialog border border-line-strong bg-surface p-6 shadow-[var(--shadow-float)] motion-reduce:animate-none">
         <div
           className={cn(
-            "mb-[1.4rem] flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft text-brand",
+            "mb-5 flex h-10 w-10 items-center justify-center rounded-control border border-brand/25 bg-brand-faint text-brand",
             tone === "danger" && "bg-danger-soft text-danger",
           )}
         >
@@ -60,26 +60,29 @@ export function ConfirmDialog({
         </div>
         <button
           aria-label="Close confirmation"
-          className="absolute top-4 right-4 flex h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-full border border-line bg-transparent text-ink-muted"
+          className="absolute top-4 right-4 flex h-9 w-9 cursor-pointer items-center justify-center rounded-control border border-line bg-transparent text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-ink"
           disabled={busy}
           onClick={onCancel}
           type="button"
         >
           <X aria-hidden="true" size={19} />
         </button>
-        <p className="mb-4 text-xs font-extrabold tracking-[.12em] text-brand uppercase">
+        <p className="mb-3 font-mono text-[.58rem] font-semibold tracking-[.1em] text-brand uppercase">
           Confirm action
         </p>
         <h2
-          className="mt-0 mb-[.8rem] text-[clamp(1.7rem,4vw,2.25rem)] tracking-[-.04em]"
+          className="mt-0 mb-3 text-[clamp(1.45rem,4vw,1.85rem)] leading-tight font-semibold tracking-[-.03em]"
           id={titleId}
         >
           {title}
         </h2>
-        <p className="m-0 leading-[1.65] text-ink-muted" id={descriptionId}>
+        <p
+          className="m-0 text-[.82rem] leading-[1.6] text-ink-muted"
+          id={descriptionId}
+        >
           {description}
         </p>
-        <div className="mt-8 flex justify-end gap-[.65rem]">
+        <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
           <ButtonControl autoFocus disabled={busy} onClick={onCancel}>
             Cancel
           </ButtonControl>

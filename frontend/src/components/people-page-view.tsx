@@ -1,6 +1,8 @@
-import { IntroRegister, PageIntro } from "@/components/page-intro";
+import { PageIntro } from "@/components/page-intro";
 import { PeopleDirectory } from "@/components/people-layout-showcase";
+import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
+import { peopleGroup } from "@/lib/people-groups";
 import type { Person } from "@/lib/types";
 
 export function PeoplePageView({
@@ -11,40 +13,55 @@ export function PeoplePageView({
   loading?: boolean;
 }) {
   const list = people ?? [];
-  const alumni = list.filter((person) => person.isAlumni).length;
-  const active = list.length - alumni;
-  const leads = list.filter((person) =>
-    ["ADVISOR", "LEAD_RESEARCHER", "SENIOR_RESEARCHER"].includes(
-      person.rank ?? "",
-    ),
-  ).length;
+  const groups = list.map(peopleGroup);
+  const counts = [
+    {
+      count: groups.filter((group) =>
+        ["founder", "advisor", "lead", "senior"].includes(group),
+      ).length,
+      singular: "Faculty",
+      plural: "Faculties",
+    },
+    {
+      count: groups.filter((group) => group === "researcher").length,
+      singular: "Researcher",
+      plural: "Researchers",
+    },
+    {
+      count: groups.filter((group) => group === "assistant").length,
+      singular: "Assistant",
+      plural: "Assistants",
+    },
+    {
+      count: groups.filter((group) => group === "intern").length,
+      singular: "Intern",
+      plural: "Interns",
+    },
+  ];
 
   return (
     <>
       <PageIntro
-        aside={
-          <IntroRegister
-            loading={loading}
-            items={[
-              { label: "Active members", value: loading ? "00" : active },
-              { label: "Senior / advisory", value: loading ? "00" : leads },
-              { label: "Alumni", value: loading ? "00" : alumni },
-              { label: "Profiles", value: loading ? "00" : list.length },
-            ]}
-            title="Team overview"
-          />
-        }
+        scene="people"
+        loading={loading}
         eyebrow="People"
         meta={
-          <>
-            <span>Faculty · Researchers · Assistants · Interns</span>
+          loading ? (
             <span
-              className={loadingPlaceholder(loading, "text", "medium")}
-              data-placeholder={loading ? "text" : undefined}
-            >
-              {loading ? "00 profiles" : `${list.length} profiles`}
+              aria-hidden="true"
+              className={cn(loadingPlaceholder(true, "text", "long"), "block")}
+              data-placeholder="text"
+            />
+          ) : (
+            <span>
+              {counts
+                .map(
+                  ({ count, plural, singular }) =>
+                    `${count} ${count === 1 ? singular : plural}`,
+                )
+                .join(" · ")}
             </span>
-          </>
+          )
         }
         title="People behind the work"
       >

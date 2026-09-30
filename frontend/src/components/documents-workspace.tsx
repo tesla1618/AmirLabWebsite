@@ -174,14 +174,14 @@ export function DocumentsWorkspace() {
   return (
     <AdminOnly>
       <div className="grid gap-6" data-loading={loading || undefined}>
-        <header className="grid grid-cols-[42px_minmax(0,1fr)] items-start gap-5 border-b border-line pb-5 max-[640px]:grid-cols-1">
+        <header className="frame-rail-section grid grid-cols-[42px_minmax(0,1fr)] items-start gap-5 py-5 max-[640px]:grid-cols-1">
           <FileText aria-hidden="true" className="mt-1 text-brand" size={26} />
           <div className="flex items-end justify-between gap-5 max-[720px]:items-start max-[720px]:flex-col">
             <div>
               <p className="m-0 font-mono text-[.64rem] font-semibold uppercase tracking-[.12em] text-brand">
                 Official records
               </p>
-              <h1 className="mt-2 font-serif text-[clamp(2rem,4vw,3.4rem)] font-normal leading-none">
+              <h1 className="mt-2 font-sans text-[clamp(2rem,4vw,3.4rem)] font-normal leading-none">
                 Documents
               </h1>
               <p className="mt-3 max-w-[700px] text-[.84rem] leading-[1.6] text-ink-muted">
@@ -356,8 +356,8 @@ function IssueDocumentPanel({
   }
 
   return (
-    <form className="grid gap-5" onSubmit={issue}>
-      <section className="grid gap-5 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+    <form className="grid gap-0" onSubmit={issue}>
+      <section className="frame-rail-section grid gap-5 py-[clamp(1rem,3vw,1.7rem)]">
         <div className="grid grid-cols-3 gap-4 max-[820px]:grid-cols-1">
           <FormField label="Document type">
             <SelectControl
@@ -452,7 +452,7 @@ function IssueDocumentPanel({
         }
       />
       {error ? <FormMessage>{error}</FormMessage> : null}
-      <footer className="flex justify-end border-t border-line pt-5">
+      <footer className="flex justify-end border-b border-line-strong px-[clamp(1rem,3vw,1.7rem)] py-5">
         <ButtonControl
           disabled={!templateId}
           loading={saving}
@@ -479,7 +479,7 @@ function KindFields({
 }) {
   if (kind === "OFFER") {
     return (
-      <section className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+      <section className="grid gap-4 border-b border-line-strong bg-transparent p-[clamp(1rem,3vw,1.7rem)]">
         <header className="flex items-center gap-3 border-b border-line pb-4">
           <Send aria-hidden="true" className="text-brand" size={19} />
           <strong>Offer details</strong>
@@ -524,7 +524,7 @@ function KindFields({
   }
   if (kind === "LETTER") {
     return (
-      <section className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+      <section className="grid gap-4 border-b border-line-strong bg-transparent p-[clamp(1rem,3vw,1.7rem)]">
         <header className="flex items-center gap-3 border-b border-line pb-4">
           <Mail aria-hidden="true" className="text-brand" size={19} />
           <strong>Letter details</strong>
@@ -552,7 +552,7 @@ function KindFields({
     );
   }
   return (
-    <section className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+    <section className="grid gap-4 border-b border-line-strong bg-transparent p-[clamp(1rem,3vw,1.7rem)]">
       <header className="flex items-center gap-3 border-b border-line pb-4">
         <Award aria-hidden="true" className="text-brand" size={20} />
         <strong>Certificate details</strong>
@@ -718,8 +718,8 @@ function TemplatesPanel({
           ?.variables ?? []);
 
   return (
-    <div className="grid grid-cols-[290px_minmax(0,1fr)] gap-6 max-[900px]:grid-cols-1">
-      <aside className="grid content-start gap-2">
+    <div className="frame-rail-section grid grid-cols-[290px_minmax(0,1fr)] !px-0 max-[900px]:grid-cols-1">
+      <aside className="grid content-start border-r border-line-strong p-4 max-[900px]:border-r-0 max-[900px]:border-b">
         <ButtonControl
           className="mb-2 justify-start"
           onClick={newTemplate}
@@ -730,10 +730,10 @@ function TemplatesPanel({
         {templates.map((template) => (
           <button
             className={cn(
-              "grid cursor-pointer gap-1 rounded-panel border p-4 text-left transition-colors focus-visible:shadow-[var(--focus-ring)]",
+              "grid cursor-pointer gap-1 border-b border-line-strong p-4 text-left transition-colors first-of-type:border-t focus-visible:z-10 focus-visible:shadow-[var(--focus-ring)]",
               selectedId === template.id
                 ? "border-brand bg-brand-faint"
-                : "border-line bg-surface hover:border-brand",
+                : "border-line bg-transparent hover:border-brand hover:bg-brand-faint",
             )}
             key={template.id}
             onClick={() => selectTemplate(template)}
@@ -754,7 +754,7 @@ function TemplatesPanel({
       </aside>
 
       <form
-        className="grid gap-5 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]"
+        className="grid gap-5 p-[clamp(1rem,3vw,1.7rem)]"
         onSubmit={save}
       >
         <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
@@ -820,7 +820,7 @@ function TemplatesPanel({
             value={draft.bodyMarkdown}
           />
         </FormField>
-        <div className="flex flex-wrap gap-2 rounded-panel border border-line bg-canvas p-4">
+        <div className="flex flex-wrap gap-2 border-y border-line-strong bg-canvas p-4">
           {variables.map((variable) => (
             <ButtonControl
               compact
@@ -918,6 +918,7 @@ function IssuedPanel({
     return (
       <StatePanel
         body="Issue an offer, letter, or certificate to create the first immutable PDF record."
+        frame="workspace"
         title="No documents issued yet"
         variant="empty"
       />
@@ -928,13 +929,13 @@ function IssuedPanel({
     <div className="grid gap-3">
       {documents.map((document) => (
         <article
-          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 rounded-panel border border-line bg-surface p-4 max-[720px]:grid-cols-1"
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 border-y border-line-strong bg-transparent p-4 max-[720px]:grid-cols-1"
           key={document.id}
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <strong>{document.recipientName ?? "Legacy recipient"}</strong>
-              <span className="rounded-full bg-brand-soft px-2 py-1 font-mono text-[.58rem] font-semibold uppercase tracking-[.08em] text-brand">
+              <span className="rounded-small border border-brand/20 bg-brand-soft px-2 py-1 font-mono text-[.58rem] font-semibold uppercase tracking-[.08em] text-brand">
                 {document.kind}
               </span>
             </div>
@@ -1066,7 +1067,7 @@ function ApprovalPanel({
 
   return (
     <form className="grid gap-5" onSubmit={save}>
-      <section className="grid gap-5 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+      <section className="frame-rail-section grid gap-5 py-[clamp(1rem,3vw,1.7rem)]">
         <header className="flex items-start gap-3 border-b border-line pb-4">
           <UserCheck
             aria-hidden="true"
@@ -1101,7 +1102,7 @@ function ApprovalPanel({
           />
         </FormField>
         {display ? (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-panel border border-line bg-canvas p-4 text-[.78rem] max-[640px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-y border-line-strong bg-canvas p-4 text-[.78rem] max-[640px]:grid-cols-1">
             {[
               ["Name", display.name],
               ["Role", display.title],
@@ -1119,7 +1120,7 @@ function ApprovalPanel({
         ) : null}
       </section>
 
-      <section className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+      <section className="frame-rail-section grid gap-4 py-[clamp(1rem,3vw,1.7rem)]">
         <div>
           <strong>Approval signature</strong>
           <p className="mt-1 text-[.76rem] leading-[1.55] text-ink-muted">
@@ -1127,7 +1128,7 @@ function ApprovalPanel({
             unavailable, the PDF is generated without an image.
           </p>
         </div>
-        <label className="relative flex min-h-[150px] cursor-pointer items-center justify-center overflow-hidden rounded-panel border border-dashed border-[color-mix(in_srgb,var(--brand)_38%,var(--line))] bg-canvas p-5 text-center hover:border-brand hover:bg-brand-faint">
+        <label className="relative flex min-h-[150px] cursor-pointer items-center justify-center overflow-hidden rounded-control border border-dashed border-[color-mix(in_srgb,var(--brand)_38%,var(--line))] bg-canvas p-5 text-center hover:border-brand hover:bg-brand-faint">
           {signature ? (
             <span className="grid gap-2 text-[.78rem]">
               <strong>{signature.name}</strong>
@@ -1178,7 +1179,7 @@ function ApprovalPanel({
         ) : null}
       </section>
 
-      <section className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.7rem)]">
+      <section className="frame-rail-section grid gap-4 py-[clamp(1rem,3vw,1.7rem)]">
         <div>
           <strong>Document watermark</strong>
           <p className="mt-1 text-[.76rem] leading-[1.55] text-ink-muted">
@@ -1186,7 +1187,7 @@ function ApprovalPanel({
             normalized to PNG, and centered behind every generated PDF page.
           </p>
         </div>
-        <label className="relative flex min-h-[180px] cursor-pointer items-center justify-center overflow-hidden rounded-panel border border-dashed border-[color-mix(in_srgb,var(--brand)_38%,var(--line))] bg-canvas p-5 text-center hover:border-brand hover:bg-brand-faint">
+        <label className="relative flex min-h-[180px] cursor-pointer items-center justify-center overflow-hidden rounded-control border border-dashed border-[color-mix(in_srgb,var(--brand)_38%,var(--line))] bg-canvas p-5 text-center hover:border-brand hover:bg-brand-faint">
           {watermark ? (
             <span className="grid gap-2 text-[.78rem]">
               <strong>{watermark.name}</strong>

@@ -378,7 +378,7 @@ export function ProjectCreationForm() {
           </p>
         </FormField>
 
-        <div className="flex items-start gap-3 rounded-panel border border-[color-mix(in_srgb,var(--brand)_24%,var(--line))] bg-brand-soft p-4 text-brand">
+        <div className="flex items-start gap-3 border border-[color-mix(in_srgb,var(--brand)_24%,var(--line))] bg-brand-soft p-4 text-brand">
           <LockKeyhole aria-hidden="true" size={18} />
           <div>
             <strong className="text-[.88rem] text-ink">

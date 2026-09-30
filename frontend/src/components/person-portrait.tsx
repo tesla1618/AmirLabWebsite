@@ -37,7 +37,7 @@ export function PersonPortrait({
     <div
       aria-hidden="true"
       className={cn(
-        "relative flex items-center justify-center overflow-hidden bg-surface-subtle font-serif text-[2rem] text-brand",
+        "relative flex items-center justify-center overflow-hidden bg-surface-subtle font-sans text-[2rem] font-medium text-brand",
         variantClass[variant],
         loading && loadingPlaceholder(true, "portrait"),
         className,

@@ -3,6 +3,7 @@ import * as Select from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
+import { formControlClass } from "./form-controls";
 
 export interface SelectOption {
   label: string;
@@ -51,12 +52,13 @@ export function SelectControl({
       <Select.Trigger
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex h-[var(--control-height)] min-h-[var(--control-height)] w-full min-w-[150px] cursor-pointer items-center justify-between gap-4 rounded-control border border-line bg-surface px-4 py-0 text-[.9rem] font-normal text-ink transition-[border-color,box-shadow,background] duration-150 hover:border-[color-mix(in_srgb,var(--brand)_42%,var(--line))] data-[state=open]:border-brand focus-visible:border-brand focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-ink-faint motion-reduce:transition-none",
-          compact &&
-            "h-[38px] min-h-[38px] min-w-[138px] px-[.7rem] text-[.78rem] font-[650]",
+          formControlClass,
+          "inline-flex min-w-[150px] cursor-pointer items-center justify-between gap-3 text-left",
+          compact && "h-[38px] min-h-[38px] min-w-[138px] px-[.7rem] text-xs",
           loading && loadingPlaceholder(true, "control"),
           className,
         )}
+        data-loading={loading || undefined}
         data-placeholder={loading ? "control" : undefined}
         id={id}
       >
@@ -68,8 +70,8 @@ export function SelectControl({
       <Select.Portal>
         <Select.Content
           className={cn(
-            "z-[100] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[4px] border border-line bg-surface p-[.3rem] shadow-[0_18px_50px_color-mix(in_srgb,var(--brand-hover)_16%,transparent)] animate-[popover-enter_160ms_ease-out] motion-reduce:animate-none",
-            compact && "rounded-[3px] p-1",
+            "z-[100] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-control border border-line-strong bg-canvas p-1 shadow-[var(--shadow-float)] animate-[popover-enter_160ms_ease-out] motion-reduce:animate-none",
+            compact && "rounded-control",
           )}
           position="popper"
           sideOffset={6}
@@ -77,7 +79,7 @@ export function SelectControl({
           <Select.Viewport className="grid gap-[var(--space-1)]">
             {options.map((option) => (
               <Select.Item
-                className="flex min-h-[38px] cursor-pointer select-none items-center justify-between rounded-[2px] px-[.65rem] py-[.55rem] text-[.8rem] text-ink data-[highlighted]:bg-brand-soft data-[highlighted]:text-brand data-[state=checked]:font-[650]"
+                className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-control px-2.5 py-2 text-[.76rem] text-ink outline-none data-[highlighted]:bg-brand-faint data-[highlighted]:text-brand data-[state=checked]:bg-brand-faint data-[state=checked]:font-semibold data-[state=checked]:text-brand"
                 key={option.value}
                 value={option.value}
               >

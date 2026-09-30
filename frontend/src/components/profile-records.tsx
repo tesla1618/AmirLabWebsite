@@ -1,9 +1,12 @@
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { InputControl } from "@/components/ui/form-controls";
-import { PublicShell } from "@/components/ui/public-shell";
+import {
+  PublicShell,
+  publicShellWidthClass,
+} from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import type {
@@ -56,23 +59,29 @@ export function ProfileRecords({
 }) {
   const visible = loading ? LOADING_RECORDS : records;
   return (
-    <div aria-busy={loading || undefined} data-loading={loading || undefined}>
-      <PublicShell
-        as="nav"
+    <div
+      aria-busy={loading || undefined}
+      aria-hidden={loading || undefined}
+      data-loading={loading || undefined}
+    >
+      <nav
         aria-label="Profile sections"
-        className="sticky top-[62px] z-20 flex overflow-x-auto border-b border-line bg-[color-mix(in_srgb,var(--canvas)_94%,transparent)] px-0 [scrollbar-width:none] max-[640px]:px-0"
+        className={cn(
+          publicShellWidthClass,
+          "sticky top-[62px] z-20 flex overflow-x-auto border-b border-line-strong bg-canvas [scrollbar-width:none]",
+        )}
       >
         {visible.map((record) => (
           <a
             aria-disabled={loading || undefined}
-            className="grid min-h-[66px] flex-[1_0_190px] grid-cols-[minmax(0,1fr)_auto] items-center gap-[.5rem] border-r border-line px-4 py-[.8rem] hover:bg-brand-faint/60"
+            className="grid min-h-[60px] flex-[1_0_190px] grid-cols-[minmax(0,1fr)_auto] items-center gap-[.5rem] px-4 py-[.8rem] transition-colors hover:text-brand"
             href={loading ? undefined : `#profile-section-${record.id}`}
             key={record.id}
             tabIndex={loading ? -1 : undefined}
           >
             <strong
               className={cn(
-                "font-serif text-[.9rem] font-medium",
+                "font-sans text-[.8rem] font-medium",
                 loading && loadingPlaceholder(true, "text"),
               )}
               data-placeholder={loading ? "text" : undefined}
@@ -90,8 +99,12 @@ export function ProfileRecords({
             </small>
           </a>
         ))}
-      </PublicShell>
-      <PublicShell as="main" className="grid pb-32">
+      </nav>
+      <PublicShell
+        as="div"
+        aria-hidden={loading || undefined}
+        className="grid pb-32"
+      >
         {visible.map((record) => (
           <ProfileRecord key={record.id} loading={loading} record={record} />
         ))}
@@ -127,17 +140,24 @@ function ProfileRecord({
 
   return (
     <section
-      className="grid scroll-mt-[130px] grid-cols-[minmax(230px,.38fr)_minmax(0,1fr)] gap-[clamp(2rem,6vw,6rem)] border-b border-line py-16 max-[960px]:grid-cols-1 max-[960px]:gap-8 max-[640px]:py-14"
+      className="relative mx-[calc(var(--public-gutter)*-1)] grid scroll-mt-[130px] grid-cols-[minmax(230px,.38fr)_minmax(0,1fr)] gap-[clamp(2rem,6vw,6rem)] border-b border-line-strong px-[var(--public-gutter)] py-16 max-[960px]:grid-cols-1 max-[960px]:gap-8 max-[640px]:py-14 last:border-b-0"
       id={loading ? undefined : `profile-section-${record.id}`}
     >
       <header className="sticky top-[150px] self-start max-[960px]:static">
         <div>
-          <p className="mb-[.6rem] font-mono text-[.68rem] tracking-[.07em] text-brand uppercase">
-            {record.type}
+          <p
+            aria-hidden={loading || undefined}
+            className={cn(
+              "mb-[.6rem] font-mono text-[.68rem] tracking-[.07em] text-brand uppercase",
+              loading && loadingPlaceholder(true, "text", "short"),
+            )}
+            data-placeholder={loading ? "text" : undefined}
+          >
+            {loading ? "Loading" : record.type}
           </p>
           <h2
             className={cn(
-              "m-0 font-serif text-[clamp(1.8rem,3vw,2.6rem)] font-normal",
+              "m-0 font-sans text-[clamp(1.55rem,2.5vw,2.15rem)] font-medium tracking-[-.035em]",
               loading && loadingPlaceholder(true, "text"),
             )}
             data-placeholder={loading ? "text" : undefined}
@@ -220,7 +240,7 @@ function ProfileBlock({
         <header className="flex items-baseline justify-between">
           <h3
             className={cn(
-              "mt-0 mb-5 font-serif text-[1.45rem] font-medium",
+              "mt-0 mb-5 font-sans text-[1.2rem] font-medium tracking-[-.025em]",
               loading && loadingPlaceholder(true, "text"),
             )}
             data-placeholder={loading ? "text" : undefined}
@@ -275,7 +295,11 @@ function ProfileBlock({
           type="button"
         >
           {expanded ? "Show fewer" : `Show all ${block.entries.length}`}
-          <ChevronDown aria-hidden="true" size={15} />
+          {expanded ? (
+            <ArrowUp aria-hidden="true" size={15} />
+          ) : (
+            <ArrowDown aria-hidden="true" size={15} />
+          )}
         </button>
       ) : null}
     </section>

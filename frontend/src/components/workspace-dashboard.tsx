@@ -196,7 +196,7 @@ export function WorkspaceDashboard() {
         <div className="grid content-center gap-[.22rem] px-[1.1rem] py-[.9rem]">
           <strong
             className={cn(
-              "font-serif text-[1.15rem] font-medium",
+              "font-sans text-[1.15rem] font-medium",
               loadingPlaceholder(loadingOverview, "text"),
             )}
             data-placeholder={loadingOverview ? "text" : undefined}
@@ -414,7 +414,7 @@ export function WorkspaceDashboard() {
                         </span>
                         <strong
                           className={cn(
-                            "font-serif text-[.92rem] font-medium",
+                            "font-sans text-[.92rem] font-medium",
                             loadingPlaceholder(loadingOverview, "text"),
                           )}
                           data-placeholder={
@@ -640,7 +640,7 @@ export function WorkspaceDashboard() {
                       </Badge>
                       <strong
                         className={cn(
-                          "overflow-hidden text-ellipsis whitespace-nowrap font-serif text-[.95rem] font-medium",
+                          "overflow-hidden text-ellipsis whitespace-nowrap font-sans text-[.95rem] font-medium",
                           loadingPlaceholder(loadingOverview, "text"),
                         )}
                         data-placeholder={loadingOverview ? "text" : undefined}

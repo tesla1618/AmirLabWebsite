@@ -3,6 +3,7 @@ import { loadingPlaceholder } from "@/lib/loading-style";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { WorkspaceRuleBand } from "@/components/ui/workspace-surface";
 
 interface WorkspaceRecordProps {
   actions?: ReactNode;
@@ -16,32 +17,44 @@ interface WorkspaceRecordProps {
 }
 
 export function WorkspaceRecordForm({
+  children,
   className,
   ...props
 }: ComponentPropsWithoutRef<"form">) {
   return (
     <form
-      className={cn(
-        "mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)]",
-        className,
-      )}
+      className="relative border border-line-strong bg-surface"
       {...props}
-    />
+    >
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[820px] gap-[1.35rem] px-[var(--workspace-gutter)] py-[clamp(1.25rem,3vw,2rem)] max-[640px]:px-4",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </form>
   );
 }
 
 export function WorkspaceRecordPanel({
+  children,
   className,
   ...props
 }: ComponentPropsWithoutRef<"section">) {
   return (
     <section
       className={cn(
-        "mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)]",
+        "relative border border-line-strong bg-surface",
         className,
       )}
       {...props}
-    />
+    >
+      <div className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] px-[var(--workspace-gutter)] py-[clamp(1.25rem,3vw,2rem)] max-[640px]:px-4">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -67,7 +80,7 @@ export function WorkspaceRecordPanelTitle({
   return (
     <h2
       className={cn(
-        "m-0 font-serif text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]",
+        "m-0 font-sans text-[clamp(1.2rem,2vw,1.55rem)] font-medium leading-[1.15]",
         className,
       )}
       {...props}
@@ -87,23 +100,23 @@ export function WorkspaceRecord({
 }: WorkspaceRecordProps) {
   return (
     <div
-      className="mx-auto grid w-full max-w-[1280px] gap-6 pb-20"
+      className="grid w-full gap-6 pb-20"
       data-loading={loading || undefined}
     >
       <Link
-        className="inline-flex w-fit items-center gap-[.4rem] text-[.86rem] text-ink-muted hover:text-brand"
+        className="inline-flex w-fit items-center gap-[.35rem] text-[.72rem] font-medium text-ink-muted hover:text-brand"
         href={backHref}
       >
         <ArrowLeft aria-hidden="true" size={15} /> {backLabel}
       </Link>
-      <header className="flex items-end justify-between gap-4 border-b border-line pb-6 max-[700px]:flex-col max-[700px]:items-stretch">
+      <WorkspaceRuleBand contentClassName="flex items-end justify-between gap-4 py-5 max-[700px]:flex-col max-[700px]:items-stretch">
         <div>
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
+          <p className="m-0 mb-2 font-mono text-[.58rem] font-semibold uppercase tracking-[.11em] text-brand">
             {eyebrow}
           </p>
           <h1
             className={cn(
-              "mt-[.3rem] font-serif text-[clamp(2.15rem,4.6vw,3.65rem)] font-normal leading-[.98] tracking-[-.035em]",
+              "mt-[.2rem] font-serif text-[clamp(1.7rem,3vw,2.35rem)] font-medium leading-[1.02] tracking-[-.03em]",
               loadingPlaceholder(loading, "text", "long"),
             )}
             data-placeholder={loading ? "text" : undefined}
@@ -112,7 +125,7 @@ export function WorkspaceRecord({
             {title}
           </h1>
           {description ? (
-            <p className="mt-[.7rem] max-w-[640px] text-[.88rem] leading-[1.55] text-ink-muted">
+            <p className="mt-[.55rem] max-w-[640px] text-[.76rem] leading-[1.55] text-ink-muted">
               {description}
             </p>
           ) : null}
@@ -122,7 +135,7 @@ export function WorkspaceRecord({
             {actions}
           </div>
         ) : null}
-      </header>
+      </WorkspaceRuleBand>
       {children}
     </div>
   );

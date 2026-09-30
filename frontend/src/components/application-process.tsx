@@ -1,3 +1,6 @@
+import { cn } from "@/lib/cn";
+import { loadingPlaceholder } from "@/lib/loading-style";
+
 const STEPS = [
   {
     meta: "Choose an open role and upload one text-based PDF.",
@@ -17,32 +20,54 @@ const STEPS = [
   },
 ] as const;
 
-export function ApplicationProcess() {
+export function ApplicationProcess({ loading = false }: { loading?: boolean }) {
   return (
     <aside
       className="sticky top-[6.5rem] self-start px-[.25rem] py-[.25rem] max-[900px]:static"
       aria-label="Application process"
     >
-      <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
+      <p
+        className={cn(
+          "m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand",
+          loading && loadingPlaceholder(true, "label", "medium"),
+        )}
+      >
         Application path
       </p>
-      <h2 className="mb-[1.8rem] mt-3 font-serif text-[clamp(2rem,3vw,2.8rem)] font-medium leading-[.98] tracking-[-.035em]">
+      <h2
+        className={cn(
+          "mb-[1.8rem] mt-3 font-sans text-[clamp(2rem,3vw,2.8rem)] font-medium leading-[.98] tracking-[-.035em]",
+          loading && loadingPlaceholder(true, "text", "long"),
+        )}
+      >
         From upload to review
       </h2>
-      <ol className="relative m-0 list-none p-0 before:absolute before:bottom-3 before:left-[6px] before:top-[7px] before:w-px before:bg-line after:absolute after:left-[6px] after:top-[7px] after:h-[16%] after:w-px after:origin-top after:animate-[rail-enter_700ms_180ms_cubic-bezier(.22,1,.36,1)_both] after:bg-brand motion-reduce:after:animate-none">
+      <ol className="relative m-0 list-none p-0">
         {STEPS.map((step, index) => (
           <li
-            className="relative z-[1] grid grid-cols-[13px_minmax(0,1fr)] gap-1 pb-6 last:pb-0"
+            className="relative z-[1] grid grid-cols-[27px_minmax(0,1fr)] gap-1 pb-6 after:absolute after:top-[27px] after:bottom-0 after:left-[13px] after:w-px after:bg-line last:pb-0 last:after:hidden"
             key={step.title}
           >
             <span
               aria-hidden="true"
-              className={`row-span-2 mt-[.15rem] h-3 w-3 rounded-full border-2 ${index === 0 ? "border-brand bg-brand shadow-[0_0_0_4px_var(--brand-soft)]" : "border-line bg-surface"}`}
-            />
-            <strong className="pl-[.7rem] text-[.88rem] leading-[1.3]">
+              className="row-span-2 grid h-[27px] w-[27px] place-items-center border border-line-strong bg-canvas font-mono text-[.55rem] text-ink-muted"
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <strong
+              className={cn(
+                "pl-[.7rem] text-[.88rem] leading-[1.3]",
+                loading && loadingPlaceholder(true, "text", "medium"),
+              )}
+            >
               {step.title}
             </strong>
-            <p className="m-0 pl-[.7rem] text-[.76rem] leading-[1.45] text-ink-muted">
+            <p
+              className={cn(
+                "m-0 ml-[.7rem] pl-0 text-[.76rem] leading-[1.45] text-ink-muted",
+                loading && loadingPlaceholder(true, "text", "long"),
+              )}
+            >
               {step.meta}
             </p>
           </li>

@@ -19,23 +19,25 @@ export type ActionVariant =
   | "secondary";
 
 const variantClass: Record<ActionVariant, string> = {
-  primary: "border-transparent bg-brand text-on-accent hover:bg-brand-hover",
+  primary:
+    "border-brand bg-brand text-on-accent hover:border-brand-hover hover:bg-brand-hover",
   secondary:
-    "border-line-strong bg-surface text-ink hover:border-brand hover:bg-brand-faint hover:text-brand",
+    "border-line-strong bg-surface text-ink hover:border-line-strong hover:bg-surface-subtle",
   ghost:
-    "border-transparent bg-transparent text-ink hover:bg-brand-faint hover:text-brand",
+    "border-transparent bg-transparent text-ink hover:bg-surface-subtle hover:text-ink",
   dashed:
-    "border-dashed border-[color-mix(in_srgb,var(--brand)_48%,var(--line))] bg-transparent text-brand hover:border-brand hover:bg-brand-soft",
+    "border-line-strong bg-surface text-ink hover:border-line-strong hover:bg-surface-subtle",
   dotted:
-    "border-dotted border-[color-mix(in_srgb,var(--brand)_48%,var(--line))] bg-transparent text-brand hover:border-brand hover:bg-brand-soft",
-  danger: "border-transparent bg-danger text-on-accent hover:bg-danger-hover",
+    "border-line-strong bg-surface text-ink hover:border-line-strong hover:bg-surface-subtle",
+  danger:
+    "border-danger/50 bg-danger-soft text-danger hover:border-danger hover:bg-danger-soft",
   "danger-ghost":
     "border-transparent bg-transparent text-danger hover:bg-danger-soft hover:text-danger-hover",
   dark: "border-dark-line bg-transparent text-dark-ink hover:border-dark-ink hover:bg-dark-ink hover:text-dark-surface",
   "dark-outline":
     "border-dark-line bg-transparent text-dark-ink hover:border-dark-ink",
   "add-empty":
-    "border-dashed border-[color-mix(in_srgb,var(--brand)_48%,var(--line))] bg-transparent text-brand hover:border-brand hover:bg-brand-soft",
+    "border-line-strong bg-surface text-brand hover:border-brand hover:bg-brand-soft",
   "add-another":
     "border-transparent bg-brand-soft text-brand hover:bg-[color-mix(in_srgb,var(--brand)_16%,var(--surface))]",
 };
@@ -52,9 +54,9 @@ function actionClassName({
   variant: ActionVariant;
 }) {
   return cn(
-    "inline-flex h-[var(--control-height)] min-h-[var(--control-height)] cursor-pointer items-center justify-center gap-[.55rem] rounded-control border px-[.9rem] py-0 text-[.78rem] font-semibold transition-[border-color,background,color,box-shadow] duration-[140ms] focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
+    "inline-flex h-[var(--control-height)] min-h-[var(--control-height)] cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-control)] border px-3.5 py-0 text-xs font-medium transition-[border-color,background,color,box-shadow] duration-[140ms] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
     variantClass[variant],
-    compact && "h-9 min-h-9 px-[.7rem] text-xs",
+    compact && "h-8 min-h-8 px-[.65rem] text-[.7rem]",
     loading && loadingPlaceholder(true, "control"),
     className,
   );
@@ -90,6 +92,7 @@ export const ButtonControl = forwardRef<
     <button
       ref={ref}
       className={actionClassName({ className, compact, loading, variant })}
+      aria-busy={loading || undefined}
       data-loading={loading || undefined}
       data-placeholder={loading ? "control" : undefined}
       disabled={disabled || loading}
@@ -128,7 +131,9 @@ export function ButtonLink({
         variant,
       })}
       {...props}
+      aria-busy={loading || undefined}
       aria-disabled={loading || props["aria-disabled"] || undefined}
+      data-loading={loading || undefined}
       data-placeholder={loading ? "control" : undefined}
       tabIndex={loading ? -1 : tabIndex}
     >
@@ -170,7 +175,9 @@ export const ButtonAnchor = forwardRef<
         variant,
       })}
       {...props}
+      aria-busy={loading || undefined}
       aria-disabled={loading || props["aria-disabled"] || undefined}
+      data-loading={loading || undefined}
       data-placeholder={loading ? "control" : undefined}
       tabIndex={loading ? -1 : tabIndex}
     >

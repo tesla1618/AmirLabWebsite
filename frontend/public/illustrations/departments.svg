@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="t d">
+<title id="t">Departments and shared projects</title>
+<desc id="d">Six departments shown as clusters of researchers. Projects form between them, drawing members from two or three departments at a time.</desc>
+<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<style>
+.edge{fill:none;stroke:#aab3ad;stroke-width:1;stroke-dasharray:2 3;opacity:.75}
+.bound{fill:none;stroke:#315bd6;stroke-opacity:.3;stroke-dasharray:2 4}
+.node{fill:#f7f8f6;stroke:#1f2421;stroke-opacity:.5;stroke-width:1}
+.ghost{fill:none;stroke:#315bd6;stroke-opacity:.4;stroke-dasharray:2 2}
+.pin{fill:#1f2421;opacity:.5}
+.sig{fill:none;stroke:#315bd6;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:14 200;stroke-dashoffset:214;opacity:0;animation:sig 11.0s linear infinite}
+.core{fill:#315bd6;opacity:0;animation:core 11.0s ease-in-out infinite}
+.pcore{fill:#315bd6;opacity:0;animation:pcore 11.0s ease-in-out infinite}
+.ring{fill:none;stroke:#315bd6;stroke-width:1;opacity:0;transform-box:fill-box;transform-origin:center;animation:ring 11.0s ease-out infinite}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 40s linear infinite}
+@keyframes sig{0%{stroke-dashoffset:214;opacity:0}.5%{opacity:1}5.86%{opacity:1}6.36%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes core{0%{opacity:0}1.2%,14%{opacity:.95}20%,100%{opacity:0}}
+@keyframes pcore{0%{opacity:0}1.2%,17%{opacity:.95}24%,100%{opacity:0}}
+@keyframes ring{0%{opacity:.7;transform:scale(1)}7%,100%{opacity:0;transform:scale(2.3)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.sig{stroke-dashoffset:0;opacity:.35}.core,.pcore{opacity:.6}}
+</style>
+
+<path class="edge" d="M441.3 321.0Q369.7 273.2 320.0 240.0"/>
+<path class="edge" d="M310.5 94.5Q297.2 147.7 274.0 160.3"/>
+<path class="edge" d="M450.8 304.5Q411.3 266.5 412.0 240.0"/>
+<path class="edge" d="M198.7 321.0Q270.3 273.2 320.0 240.0"/>
+<path class="edge" d="M329.5 385.5Q342.8 332.3 366.0 319.7"/>
+<path class="edge" d="M189.2 175.5Q228.7 213.5 228.0 240.0"/>
+<path class="edge" d="M189.2 175.5Q266.4 213.5 320.0 240.0"/>
+<path class="edge" d="M198.7 321.0Q251.4 305.9 274.0 319.7"/>
+<path class="edge" d="M198.7 159.0Q251.4 174.1 274.0 160.3"/>
+<path class="edge" d="M450.8 175.5Q411.3 213.5 412.0 240.0"/>
+<path class="edge" d="M310.5 94.5Q316.1 180.3 320.0 240.0"/>
+<path class="edge" d="M441.3 321.0Q388.6 305.9 366.0 319.7"/>
+<path class="edge" d="M329.5 94.5Q342.8 147.7 366.0 160.3"/>
+<path class="edge" d="M329.5 385.5Q323.9 299.7 320.0 240.0"/>
+<path class="edge" d="M441.3 159.0Q388.6 174.1 366.0 160.3"/>
+<path class="edge" d="M310.5 385.5Q297.2 332.3 274.0 319.7"/>
+<path class="edge" d="M189.2 304.5Q228.7 266.5 228.0 240.0"/>
+<path class="edge" d="M441.3 159.0Q369.7 206.8 320.0 240.0"/>
+<g filter="url(#glow)">
+<path class="sig" pathLength="200" d="M329.5 94.5Q342.8 147.7 366.0 160.3" style="animation-delay:0.00s"/>
+<path class="sig" pathLength="200" d="M441.3 159.0Q388.6 174.1 366.0 160.3" style="animation-delay:0.00s"/>
+<path class="sig" pathLength="200" d="M441.3 159.0Q369.7 206.8 320.0 240.0" style="animation-delay:2.20s"/>
+<path class="sig" pathLength="200" d="M329.5 385.5Q323.9 299.7 320.0 240.0" style="animation-delay:2.20s"/>
+<path class="sig" pathLength="200" d="M189.2 175.5Q266.4 213.5 320.0 240.0" style="animation-delay:2.20s"/>
+<path class="sig" pathLength="200" d="M310.5 385.5Q297.2 332.3 274.0 319.7" style="animation-delay:4.40s"/>
+<path class="sig" pathLength="200" d="M198.7 321.0Q251.4 305.9 274.0 319.7" style="animation-delay:4.40s"/>
+<path class="sig" pathLength="200" d="M198.7 159.0Q251.4 174.1 274.0 160.3" style="animation-delay:6.60s"/>
+<path class="sig" pathLength="200" d="M310.5 94.5Q297.2 147.7 274.0 160.3" style="animation-delay:6.60s"/>
+<path class="sig" pathLength="200" d="M310.5 94.5Q316.1 180.3 320.0 240.0" style="animation-delay:8.80s"/>
+<path class="sig" pathLength="200" d="M441.3 321.0Q369.7 273.2 320.0 240.0" style="animation-delay:8.80s"/>
+<path class="sig" pathLength="200" d="M198.7 321.0Q270.3 273.2 320.0 240.0" style="animation-delay:8.80s"/>
+</g>
+<g class="spin" style="animation-delay:-0s"><circle class="bound" cx="320.0" cy="78.0" r="36"/></g>
+<rect class="node" x="314.5" y="72.5" width="11" height="11"/>
+<rect class="pin" x="319.2" y="77.2" width="1.5" height="1.5"/>
+<rect class="node" x="306.5" y="57.5" width="8" height="8"/>
+<rect class="node" x="297.0" y="74.0" width="8" height="8"/>
+<rect class="node" x="306.5" y="90.5" width="8" height="8"/>
+<rect class="core" x="307.6" y="91.6" width="5.8" height="5.8" style="animation-delay:6.60s"/>
+<rect class="ring" x="306.5" y="90.5" width="8" height="8" style="animation-delay:6.60s"/>
+<rect class="core" x="307.6" y="91.6" width="5.8" height="5.8" style="animation-delay:8.80s"/>
+<rect class="ring" x="306.5" y="90.5" width="8" height="8" style="animation-delay:8.80s"/>
+<rect class="node" x="325.5" y="90.5" width="8" height="8"/>
+<rect class="core" x="326.6" y="91.6" width="5.8" height="5.8" style="animation-delay:0.00s"/>
+<rect class="ring" x="325.5" y="90.5" width="8" height="8" style="animation-delay:0.00s"/>
+<rect class="node" x="335.0" y="74.0" width="8" height="8"/>
+<rect class="node" x="325.5" y="57.5" width="8" height="8"/>
+<g class="spin" style="animation-delay:-6s"><circle class="bound" cx="460.3" cy="159.0" r="36"/></g>
+<rect class="node" x="454.8" y="153.5" width="11" height="11"/>
+<rect class="pin" x="459.5" y="158.2" width="1.5" height="1.5"/>
+<rect class="node" x="465.8" y="138.5" width="8" height="8"/>
+<rect class="node" x="446.8" y="138.5" width="8" height="8"/>
+<rect class="node" x="437.3" y="155.0" width="8" height="8"/>
+<rect class="core" x="438.4" y="156.1" width="5.8" height="5.8" style="animation-delay:0.00s"/>
+<rect class="ring" x="437.3" y="155.0" width="8" height="8" style="animation-delay:0.00s"/>
+<rect class="core" x="438.4" y="156.1" width="5.8" height="5.8" style="animation-delay:2.20s"/>
+<rect class="ring" x="437.3" y="155.0" width="8" height="8" style="animation-delay:2.20s"/>
+<rect class="node" x="446.8" y="171.5" width="8" height="8"/>
+<rect class="node" x="465.8" y="171.5" width="8" height="8"/>
+<rect class="node" x="475.3" y="155.0" width="8" height="8"/>
+<g class="spin" style="animation-delay:-12s"><circle class="bound" cx="460.3" cy="321.0" r="36"/></g>
+<rect class="node" x="454.8" y="315.5" width="11" height="11"/>
+<rect class="pin" x="459.5" y="320.2" width="1.5" height="1.5"/>
+<rect class="node" x="475.3" y="317.0" width="8" height="8"/>
+<rect class="node" x="465.8" y="300.5" width="8" height="8"/>
+<rect class="node" x="446.8" y="300.5" width="8" height="8"/>
+<rect class="node" x="437.3" y="317.0" width="8" height="8"/>
+<rect class="core" x="438.4" y="318.1" width="5.8" height="5.8" style="animation-delay:8.80s"/>
+<rect class="ring" x="437.3" y="317.0" width="8" height="8" style="animation-delay:8.80s"/>
+<rect class="node" x="446.8" y="333.5" width="8" height="8"/>
+<rect class="node" x="465.8" y="333.5" width="8" height="8"/>
+<g class="spin" style="animation-delay:-18s"><circle class="bound" cx="320.0" cy="402.0" r="36"/></g>
+<rect class="node" x="314.5" y="396.5" width="11" height="11"/>
+<rect class="pin" x="319.2" y="401.2" width="1.5" height="1.5"/>
+<rect class="node" x="325.5" y="414.5" width="8" height="8"/>
+<rect class="node" x="335.0" y="398.0" width="8" height="8"/>
+<rect class="node" x="325.5" y="381.5" width="8" height="8"/>
+<rect class="core" x="326.6" y="382.7" width="5.8" height="5.8" style="animation-delay:2.20s"/>
+<rect class="ring" x="325.5" y="381.5" width="8" height="8" style="animation-delay:2.20s"/>
+<rect class="node" x="306.5" y="381.5" width="8" height="8"/>
+<rect class="core" x="307.6" y="382.7" width="5.8" height="5.8" style="animation-delay:4.40s"/>
+<rect class="ring" x="306.5" y="381.5" width="8" height="8" style="animation-delay:4.40s"/>
+<rect class="node" x="297.0" y="398.0" width="8" height="8"/>
+<rect class="node" x="306.5" y="414.5" width="8" height="8"/>
+<g class="spin" style="animation-delay:-24s"><circle class="bound" cx="179.7" cy="321.0" r="36"/></g>
+<rect class="node" x="174.2" y="315.5" width="11" height="11"/>
+<rect class="pin" x="179.0" y="320.2" width="1.5" height="1.5"/>
+<rect class="node" x="166.2" y="333.5" width="8" height="8"/>
+<rect class="node" x="185.2" y="333.5" width="8" height="8"/>
+<rect class="node" x="194.7" y="317.0" width="8" height="8"/>
+<rect class="core" x="195.8" y="318.1" width="5.8" height="5.8" style="animation-delay:4.40s"/>
+<rect class="ring" x="194.7" y="317.0" width="8" height="8" style="animation-delay:4.40s"/>
+<rect class="core" x="195.8" y="318.1" width="5.8" height="5.8" style="animation-delay:8.80s"/>
+<rect class="ring" x="194.7" y="317.0" width="8" height="8" style="animation-delay:8.80s"/>
+<rect class="node" x="185.2" y="300.5" width="8" height="8"/>
+<rect class="node" x="166.2" y="300.5" width="8" height="8"/>
+<rect class="node" x="156.7" y="317.0" width="8" height="8"/>
+<g class="spin" style="animation-delay:-30s"><circle class="bound" cx="179.7" cy="159.0" r="36"/></g>
+<rect class="node" x="174.2" y="153.5" width="11" height="11"/>
+<rect class="pin" x="179.0" y="158.2" width="1.5" height="1.5"/>
+<rect class="node" x="156.7" y="155.0" width="8" height="8"/>
+<rect class="node" x="166.2" y="171.5" width="8" height="8"/>
+<rect class="node" x="185.2" y="171.5" width="8" height="8"/>
+<rect class="core" x="186.3" y="172.6" width="5.8" height="5.8" style="animation-delay:2.20s"/>
+<rect class="ring" x="185.2" y="171.5" width="8" height="8" style="animation-delay:2.20s"/>
+<rect class="node" x="194.7" y="155.0" width="8" height="8"/>
+<rect class="core" x="195.8" y="156.1" width="5.8" height="5.8" style="animation-delay:6.60s"/>
+<rect class="ring" x="194.7" y="155.0" width="8" height="8" style="animation-delay:6.60s"/>
+<rect class="node" x="185.2" y="138.5" width="8" height="8"/>
+<rect class="node" x="166.2" y="138.5" width="8" height="8"/>
+<rect class="ghost" x="356.0" y="150.3" width="20" height="20" transform="rotate(45 366.0 160.3)"/>
+<rect class="node" x="360.0" y="154.3" width="12" height="12" transform="rotate(45 366.0 160.3)"/>
+<rect class="pcore" x="361.8" y="156.1" width="8.4" height="8.4" transform="rotate(45 366.0 160.3)" style="animation-delay:0.65s"/>
+<g transform="rotate(45 366.0 160.3)"><rect class="ring" x="360.0" y="154.3" width="12" height="12" style="animation-delay:0.65s"/></g>
+<rect class="ghost" x="308.0" y="228.0" width="24" height="24" transform="rotate(45 320.0 240.0)"/>
+<rect class="node" x="312.0" y="232.0" width="16" height="16" transform="rotate(45 320.0 240.0)"/>
+<rect class="pcore" x="314.4" y="234.4" width="11.2" height="11.2" transform="rotate(45 320.0 240.0)" style="animation-delay:2.85s"/>
+<g transform="rotate(45 320.0 240.0)"><rect class="ring" x="312.0" y="232.0" width="16" height="16" style="animation-delay:2.85s"/></g>
+<rect class="pcore" x="314.4" y="234.4" width="11.2" height="11.2" transform="rotate(45 320.0 240.0)" style="animation-delay:9.45s"/>
+<g transform="rotate(45 320.0 240.0)"><rect class="ring" x="312.0" y="232.0" width="16" height="16" style="animation-delay:9.45s"/></g>
+<rect class="ghost" x="264.0" y="309.7" width="20" height="20" transform="rotate(45 274.0 319.7)"/>
+<rect class="node" x="268.0" y="313.7" width="12" height="12" transform="rotate(45 274.0 319.7)"/>
+<rect class="pcore" x="269.8" y="315.5" width="8.4" height="8.4" transform="rotate(45 274.0 319.7)" style="animation-delay:5.05s"/>
+<g transform="rotate(45 274.0 319.7)"><rect class="ring" x="268.0" y="313.7" width="12" height="12" style="animation-delay:5.05s"/></g>
+<rect class="ghost" x="264.0" y="150.3" width="20" height="20" transform="rotate(45 274.0 160.3)"/>
+<rect class="node" x="268.0" y="154.3" width="12" height="12" transform="rotate(45 274.0 160.3)"/>
+<rect class="pcore" x="269.8" y="156.1" width="8.4" height="8.4" transform="rotate(45 274.0 160.3)" style="animation-delay:7.25s"/>
+<g transform="rotate(45 274.0 160.3)"><rect class="ring" x="268.0" y="154.3" width="12" height="12" style="animation-delay:7.25s"/></g>
+<rect class="ghost" x="402.0" y="230.0" width="20" height="20" transform="rotate(45 412.0 240.0)"/>
+<rect class="node" x="406.0" y="234.0" width="12" height="12" transform="rotate(45 412.0 240.0)"/>
+<rect class="ghost" x="356.0" y="309.7" width="20" height="20" transform="rotate(45 366.0 319.7)"/>
+<rect class="node" x="360.0" y="313.7" width="12" height="12" transform="rotate(45 366.0 319.7)"/>
+<rect class="ghost" x="218.0" y="230.0" width="20" height="20" transform="rotate(45 228.0 240.0)"/>
+<rect class="node" x="222.0" y="234.0" width="12" height="12" transform="rotate(45 228.0 240.0)"/>
+</svg>

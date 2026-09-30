@@ -103,39 +103,45 @@ export function DateTimeField({
       <Popover.Portal>
         <Popover.Content
           align="start"
-          className="z-[100] grid w-[min(420px,calc(100vw-2rem))] gap-[.9rem] rounded-[4px] border border-line bg-surface p-4 shadow-[0_24px_60px_color-mix(in_srgb,var(--brand-hover)_16%,transparent)]"
+          className="z-[100] grid w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-control border border-line-strong bg-canvas shadow-[var(--shadow-float)]"
           sideOffset={8}
         >
-          <DatePicker
-            onChange={(day) => {
-              const next = withDate(draft, day);
-              commit(next);
-              if (!includesTime) setOpen(false);
-            }}
-            maxDate={maxDate}
-            minDate={minDate}
-            onMonthChange={setVisibleMonth}
-            selected={draft}
-            visibleMonth={visibleMonth}
-          />
-          {includesTime ? (
-            <TimePicker
+          <div className="p-4">
+            <DatePicker
+              onChange={(day) => {
+                const next = withDate(draft, day);
+                commit(next);
+                if (!includesTime) setOpen(false);
+              }}
               maxDate={maxDate}
               minDate={minDate}
-              onChange={(hour, minute) => commit(withTime(draft, hour, minute))}
-              value={draft}
+              onMonthChange={setVisibleMonth}
+              selected={draft}
+              visibleMonth={visibleMonth}
             />
+          </div>
+          {includesTime ? (
+            <div className="border-t border-line p-4">
+              <TimePicker
+                maxDate={maxDate}
+                minDate={minDate}
+                onChange={(hour, minute) =>
+                  commit(withTime(draft, hour, minute))
+                }
+                value={draft}
+              />
+            </div>
           ) : null}
-          <div className="flex items-center justify-between border-t border-line pt-3">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3">
             <button
-              className="min-h-[34px] cursor-pointer rounded-control border-0 bg-transparent px-[.55rem] py-[.35rem] text-[.78rem] text-brand hover:bg-brand-soft"
+              className="min-h-8 cursor-pointer rounded-control border border-line bg-surface px-3 text-[.72rem] text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-ink"
               onClick={() => onChange("")}
               type="button"
             >
               Clear
             </button>
             <button
-              className="min-h-[34px] cursor-pointer rounded-control border-0 bg-transparent px-[.55rem] py-[.35rem] text-[.78rem] text-brand hover:bg-brand-soft"
+              className="min-h-8 cursor-pointer rounded-control border border-line bg-surface px-3 text-[.72rem] text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-ink"
               onClick={() => {
                 commit(roundHour(new Date()));
                 setOpen(false);
@@ -193,17 +199,17 @@ function DatePicker({
 }) {
   return (
     <>
-      <div className="flex items-center justify-between">
-        <strong className="text-[.9rem]">
+      <div className="mb-2 flex items-center justify-between border-b border-line pb-2">
+        <strong className="text-[.78rem] font-semibold">
           {visibleMonth.toLocaleDateString("en", {
             month: "long",
             year: "numeric",
           })}
         </strong>
-        <div className="flex gap-[.35rem]">
+        <div className="flex gap-1">
           <button
             aria-label="Previous month"
-            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-ink hover:bg-brand-soft hover:text-brand"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-brand"
             onClick={() => onMonthChange((current) => addMonths(current, -1))}
             type="button"
           >
@@ -211,7 +217,7 @@ function DatePicker({
           </button>
           <button
             aria-label="Next month"
-            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-ink hover:bg-brand-soft hover:text-brand"
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-brand"
             onClick={() => onMonthChange((current) => addMonths(current, 1))}
             type="button"
           >
@@ -219,7 +225,7 @@ function DatePicker({
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {WEEKDAYS.map((weekday, index) => (
           <span
             className="py-[.35rem] text-center font-mono text-[.62rem] text-ink-muted"
@@ -233,13 +239,21 @@ function DatePicker({
         {monthGrid(visibleMonth).map((day) => {
           const outside = day.getMonth() !== visibleMonth.getMonth();
           const disabled = outside || !isDateSelectable(day, minDate, maxDate);
+          const today = sameDay(day, new Date());
+          const selectedDay = sameDay(day, selected);
           return (
             <button
+              aria-label={`${day.toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}${selectedDay ? ", selected" : today ? ", today" : disabled ? ", unavailable" : ""}`}
               aria-disabled={disabled}
-              aria-pressed={sameDay(day, selected)}
+              aria-pressed={selectedDay}
               className={cn(
-                "flex h-9 w-9 cursor-pointer items-center justify-center justify-self-center rounded-full border-0 bg-transparent text-[.78rem] text-ink hover:bg-brand-soft hover:text-brand disabled:cursor-not-allowed disabled:bg-transparent disabled:text-ink-faint disabled:opacity-45 aria-pressed:bg-brand aria-pressed:font-bold aria-pressed:text-on-accent",
+                "flex h-8 w-full cursor-pointer items-center justify-center justify-self-center rounded-control border-0 bg-transparent text-[.72rem] text-ink hover:bg-surface-subtle hover:text-brand focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-ink-faint disabled:opacity-45 aria-pressed:bg-brand aria-pressed:font-bold aria-pressed:text-on-accent",
                 outside && "text-ink-faint",
+                today && !selectedDay && "ring-1 ring-inset ring-brand",
               )}
               disabled={disabled}
               key={toDateValue(day)}
@@ -270,7 +284,7 @@ function TimePicker({
   const period = value.getHours() >= 12 ? "PM" : "AM";
 
   return (
-    <div className="grid gap-3 border-t border-line pt-[.85rem]">
+    <div className="grid gap-3">
       <header className="flex items-center gap-[.45rem]">
         <Clock aria-hidden="true" size={15} />
         <span className="text-[.68rem] font-bold text-ink-muted">

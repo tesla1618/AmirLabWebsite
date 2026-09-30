@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
+import { useReviewSelection } from "@/lib/use-review-selection";
 import { useEffect, useState, type SyntheticEvent } from "react";
-import { useRouter } from "next/navigation";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { useReviewIssues } from "@/lib/use-review-issues";
 import type { ReviewIssue } from "@/lib/review-issues";
@@ -26,6 +26,10 @@ import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { StatePanel } from "@/components/state-panel";
 import type { PaginatedResponse } from "@/lib/types";
 import { useNotifications } from "@/components/notification-provider";
+import {
+  ReviewSplit,
+  WorkspaceRuleBand,
+} from "@/components/ui/workspace-surface";
 
 interface ReviewResearch {
   id: string;
@@ -134,13 +138,12 @@ function loadingResearchItem(index = 0): ReviewResearch {
   };
 }
 
-export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
-  const router = useRouter();
+export function ResearchReviewQueue() {
   const { refreshUnreadCount, showToast } = useNotifications();
   const [items, setItems] = useState<ReviewResearch[]>([]);
   const [result, setResult] = useState<PaginatedResponse<ReviewResearch>>();
   const [focusedItem, setFocusedItem] = useState<ReviewResearch>();
-  const [selected, setSelected] = useState<string | undefined>(selectedId);
+  const [missingId, setMissingId] = useState<string>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -170,6 +173,14 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
   const [editSaving, setEditSaving] = useState(false);
   const [sourcePollTick, setSourcePollTick] = useState(0);
   const actionIssues = useReviewIssues();
+  const { selectedId: selected, select } = useReviewSelection(
+    "/workspace/research",
+    {
+      firstId: items[0]?.id,
+      ready: !loading,
+      viewKey: `${page}|${search}|${sort}|${status}|${type}`,
+    },
+  );
 
   function beginRefresh() {
     if (result) setLoading(true);
@@ -206,25 +217,11 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
         `/research-review?${params}`,
         { method: "GET" },
       );
-      const focusRequest = selectedId
-        ? apiRequest<ReviewResearch>(`/research-review/${selectedId}`, {
-            method: "GET",
-          }).catch(() => undefined)
-        : Promise.resolve(undefined);
-
-      void Promise.all([queueRequest, focusRequest])
-        .then(([queue, focus]) => {
+      void queueRequest
+        .then((queue) => {
           if (!active) return;
           setResult(queue);
           setItems(queue.items);
-          setFocusedItem(focus);
-          setSelected((current) => {
-            if (focus) return focus.id;
-            if (queue.items.some((candidate) => candidate.id === current)) {
-              return current;
-            }
-            return queue.items[0]?.id;
-          });
         })
         .catch((caught: unknown) => {
           if (active) {
@@ -243,7 +240,35 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [page, reload, search, selectedId, sort, status, type]);
+  }, [page, reload, search, sort, status, type]);
+
+  // A linked record outside the current queue view opens in the detail pane
+  // only; it is never merged into the paginated list.
+  useEffect(() => {
+    if (
+      !selected ||
+      !result ||
+      focusedItem?.id === selected ||
+      items.some((candidate) => candidate.id === selected)
+    ) {
+      return;
+    }
+    let active = true;
+    void apiRequest<ReviewResearch>(`/research-review/${selected}`, {
+      method: "GET",
+    })
+      .then((focus) => {
+        if (!active) return;
+        setFocusedItem(focus);
+        setMissingId(undefined);
+      })
+      .catch(() => {
+        if (active) setMissingId(selected);
+      });
+    return () => {
+      active = false;
+    };
+  }, [focusedItem?.id, items, result, selected]);
 
   const pendingSourceId = [focusedItem, ...items].find(
     (candidate) => candidate?.sourceSnapshot?.status === "PENDING",
@@ -325,15 +350,15 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
       headers: { "content-type": "application/json" },
       method: "POST",
     });
-    if (selectedId) {
-      router.push("/workspace/research");
-      router.refresh();
-    } else if (items.length === 1 && page > 1) {
+    const index = items.findIndex((candidate) => candidate.id === selected);
+    const next =
+      index >= 0 ? (items[index + 1] ?? items[index - 1]) : undefined;
+    select(next?.id);
+    if (items.length === 1 && page > 1) {
       setPage((current) => current - 1);
     } else {
       setReload((current) => current + 1);
     }
-    setSelected(undefined);
     setEditingId(undefined);
     setFocusedItem(undefined);
     void refreshUnreadCount().catch(() => undefined);
@@ -576,14 +601,8 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
     }
   }
 
-  const visibleItems =
-    focusedItem && !items.some((candidate) => candidate.id === focusedItem.id)
-      ? [focusedItem, ...items]
-      : items;
-  const bulk = useBulkSelection(visibleItems.map(({ id }) => id));
-  const selectedResearchItems = visibleItems.filter(({ id }) =>
-    bulk.isSelected(id),
-  );
+  const bulk = useBulkSelection(items.map(({ id }) => id));
+  const selectedResearchItems = items.filter(({ id }) => bulk.isSelected(id));
   const issuesFor = (candidate: ReviewResearch): ReviewIssue[] => [
     ...(candidate.reviewIssues ?? []),
     ...actionIssues.forItem(candidate.id),
@@ -602,8 +621,13 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
   const initialLoading = loading && !result;
   const item =
     (focusedItem?.id === selected ? focusedItem : undefined) ??
-    visibleItems.find((candidate) => candidate.id === selected) ??
+    items.find((candidate) => candidate.id === selected) ??
     (initialLoading ? loadingResearchItem() : undefined);
+  const outsideQueue = Boolean(
+    item &&
+    !initialLoading &&
+    !items.some((candidate) => candidate.id === item.id),
+  );
   const editing = Boolean(item && editingId === item.id);
   const sourcePending =
     item?.sourceSnapshot?.status === "PENDING" ||
@@ -631,14 +655,11 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
       method: "POST",
     });
     bulk.clear();
-    setSelected(undefined);
+    select(undefined);
     setEditingId(undefined);
     setFocusedItem(undefined);
     setLoading(true);
-    if (selectedId) {
-      router.push("/workspace/research");
-      router.refresh();
-    } else if (selectedResearchItems.length === items.length && page > 1) {
+    if (selectedResearchItems.length === items.length && page > 1) {
       setPage((current) => current - 1);
     } else {
       setReload((current) => current + 1);
@@ -650,13 +671,13 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
   const loadingDetail = initialLoading;
   const refreshing = loading && Boolean(result);
   const renderedItems =
-    loadingRows && !visibleItems.length
+    loadingRows && !items.length
       ? Array.from({ length: 7 }, (_, index) => loadingResearchItem(index + 1))
-      : visibleItems;
+      : items;
 
   return (
     <div className="grid min-w-0 gap-4">
-      <div className="grid min-w-0 grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(140px,.7fr))] items-end gap-[.8rem] rounded-panel border border-line bg-surface p-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
+      <WorkspaceRuleBand contentClassName="grid min-w-0 grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(140px,.7fr))] items-end gap-[.8rem] px-[var(--workspace-gutter)] py-3.5 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:px-4">
         <ToolbarSearchField
           id="research-review-search"
           label="Search queue"
@@ -718,8 +739,8 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
             value={sort}
           />
         </FormField>
-      </div>
-      {loading || visibleItems.length ? (
+      </WorkspaceRuleBand>
+      {loading || items.length ? (
         <BulkReviewBar
           actions={commonBulkActions}
           attentionCount={selectedAttentionCount}
@@ -730,7 +751,7 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
           onSubmit={decideBulk}
           onSuccess={actionIssues.clear}
           selectAllState={bulk.selectAllState}
-          selectableCount={visibleItems.length}
+          selectableCount={items.length}
           selectedCount={bulk.selectedCount}
           successBody={(decisionStatus) =>
             `${selectedResearchItems.length} research review${selectedResearchItems.length === 1 ? "" : "s"} moved to ${decisionStatus.replaceAll("_", " ").toLowerCase()}.`
@@ -740,6 +761,7 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
       ) : null}
       {error && !result && !loading ? (
         <StatePanel
+          frame="workspace"
           action={{
             label: "Retry",
             onClick: () => {
@@ -752,624 +774,661 @@ export function ResearchReviewQueue({ selectedId }: { selectedId?: string }) {
           variant="error"
         />
       ) : (
-        <div className="grid min-w-0 grid-cols-[minmax(300px,360px)_minmax(0,1fr)] items-start gap-5 max-[960px]:grid-cols-1">
-          <aside
-            className={`sticky top-[88px] grid max-h-[calc(100svh-104px)] min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-[.35rem] overflow-hidden rounded-panel border border-line bg-surface p-4 max-[960px]:static max-[960px]:max-h-none ${refreshing ? "opacity-70" : ""}`}
-          >
-            <div className="grid min-w-0 items-stretch gap-3 border-b border-line pb-[.85rem]">
-              <div>
-                <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
-                  Review queue
-                </p>
-              </div>
-              {loading || result ? (
-                <PaginationControls
-                  loading={loading}
-                  onPageChange={changePage}
-                  page={result?.page ?? page}
-                  pageSize={result?.pageSize ?? 10}
-                  total={result?.total ?? 0}
-                  totalPages={result?.totalPages ?? 1}
-                />
-              ) : null}
-            </div>
-            {renderedItems.length ? (
-              <div
-                className="min-h-0 overflow-y-auto pr-1 [scrollbar-color:var(--ink-faint)_transparent] [scrollbar-width:thin]"
-                data-loading={loadingRows || undefined}
-              >
-                <div className="flex flex-col divide-y divide-line rounded-panel border border-line overflow-hidden">
-                  {renderedItems.map((candidate) => (
-                    <div
-                      className={`relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-stretch overflow-hidden transition-colors ${candidate.id === selected ? "bg-brand-soft" : "bg-surface hover:bg-surface-subtle"}`}
-                      key={candidate.id}
-                    >
-                      {!loadingRows ? (
-                        <ReviewIssueStamp
-                          className="right-2 top-2"
-                          issue={issuesFor(candidate)[0]}
-                        />
-                      ) : null}
-                      <div className="grid place-items-center px-3">
-                        {loadingRows ? (
-                          <span
-                            className={loadingPlaceholder(true, "control")}
-                            data-placeholder="control"
-                          />
-                        ) : (
-                          <CheckboxControl
-                            ariaLabel={`Select ${researchLabel(candidate)} review`}
-                            checked={bulk.isSelected(candidate.id)}
-                            className="gap-0"
-                            id={`research-review-select-${candidate.id}`}
-                            onCheckedChange={(checked) =>
-                              bulk.toggle(candidate.id, checked)
-                            }
-                          />
-                        )}
-                      </div>
-                      <button
-                        className="grid min-h-[88px] w-full min-w-0 cursor-pointer gap-[.4rem] border-0 bg-transparent p-[.85rem_.9rem] pr-10 text-left"
-                        disabled={loadingRows}
-                        onClick={() => setSelected(candidate.id)}
-                        type="button"
-                      >
-                        <div className="w-fit capitalize">
-                          <Badge tone="info" loading={loadingRows}>
-                            {candidate.type.toLowerCase()}
-                          </Badge>
-                        </div>
-                        <span
-                          className={cn(
-                            "line-clamp-2 [overflow-wrap:anywhere] font-sans text-[.95rem] font-normal normal-case leading-[1.35] tracking-normal text-ink",
-                            loadingPlaceholder(loadingRows, "text", "long"),
-                          )}
-                          data-placeholder={loadingRows ? "text" : undefined}
-                          data-placeholder-width="long"
-                        >
-                          {researchLabel(candidate)}
-                        </span>
-                        {!loadingRows && issuesFor(candidate)[0] ? (
-                          <SemanticStatus
-                            tone={issuesFor(candidate)[0].tone ?? "pending"}
-                          >
-                            {issuesFor(candidate)[0].message}
-                          </SemanticStatus>
-                        ) : null}
-                      </button>
-                    </div>
-                  ))}
+        <ReviewSplit
+          detailLoading={loadingDetail}
+          dimQueue={refreshing}
+          queue={
+            <>
+              <div className="grid min-w-0 items-stretch gap-3 border-b border-line px-[var(--workspace-gutter)] py-4">
+                <div>
+                  <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
+                    Review queue
+                  </p>
                 </div>
+                {loading || result ? (
+                  <PaginationControls
+                    loading={loading}
+                    onPageChange={changePage}
+                    page={page}
+                    pageSize={result?.pageSize ?? 10}
+                    total={result?.total}
+                    totalPages={result?.totalPages ?? 1}
+                  />
+                ) : null}
               </div>
-            ) : (
-              <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
-                No submissions match these filters.
-              </p>
-            )}
-          </aside>
-          <section
-            className="sticky top-[88px] grid max-h-[calc(100svh-104px)] min-w-0 gap-4 overflow-y-auto rounded-panel border border-line bg-surface p-5 [scrollbar-color:var(--ink-faint)_transparent] [scrollbar-width:thin] max-[960px]:static max-[960px]:max-h-none"
-            data-loading={loadingDetail || undefined}
-          >
-            {item ? (
-              <>
-                <header className="grid gap-[.65rem]">
-                  <div className="flex flex-wrap items-center gap-[.7rem] text-[.82rem] text-ink-muted">
-                    <div className="capitalize">
-                      <Badge tone="info" loading={loadingDetail}>
-                        {item.type.toLowerCase()}
-                      </Badge>
-                    </div>
-                    <span
-                      className={cn(
-                        "font-mono text-[.75rem] text-ink-muted",
-                        loadingPlaceholder(loadingDetail, "label", "long"),
-                      )}
-                      data-placeholder={loadingDetail ? "label" : undefined}
-                      data-placeholder-width="long"
-                    >
-                      Submitted by{" "}
-                      {item.submittedBy?.person?.fullName ??
-                        item.submittedBy?.email ??
-                        "Unknown member"}
-                    </span>
+              {renderedItems.length ? (
+                <div data-loading={loadingRows || undefined}>
+                  <div className="flex flex-col">
+                    {renderedItems.map((candidate) => (
+                      <div
+                        className={`relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-stretch border-b border-line transition-colors last:border-b-0 ${candidate.id === selected ? "bg-brand-soft" : "bg-transparent hover:bg-surface-subtle"}`}
+                        key={candidate.id}
+                      >
+                        {!loadingRows ? (
+                          <ReviewIssueStamp
+                            className="right-2 top-2"
+                            issue={issuesFor(candidate)[0]}
+                          />
+                        ) : null}
+                        <div className="grid place-items-center px-3">
+                          {loadingRows ? (
+                            <span
+                              className={loadingPlaceholder(true, "control")}
+                              data-placeholder="control"
+                            />
+                          ) : (
+                            <CheckboxControl
+                              ariaLabel={`Select ${researchLabel(candidate)} review`}
+                              checked={bulk.isSelected(candidate.id)}
+                              className="gap-0"
+                              id={`research-review-select-${candidate.id}`}
+                              onCheckedChange={(checked) =>
+                                bulk.toggle(candidate.id, checked)
+                              }
+                            />
+                          )}
+                        </div>
+                        <button
+                          className="grid min-h-[88px] w-full min-w-0 cursor-pointer gap-[.4rem] border-0 bg-transparent p-[.85rem_.9rem] pr-10 text-left"
+                          disabled={loadingRows}
+                          onClick={() => select(candidate.id)}
+                          type="button"
+                        >
+                          <div className="w-fit capitalize">
+                            <Badge tone="info" loading={loadingRows}>
+                              {candidate.type.toLowerCase()}
+                            </Badge>
+                          </div>
+                          <span
+                            className={cn(
+                              "line-clamp-2 [overflow-wrap:anywhere] font-sans text-[.95rem] font-normal normal-case leading-[1.35] tracking-normal text-ink",
+                              loadingPlaceholder(loadingRows, "text", "long"),
+                            )}
+                            data-placeholder={loadingRows ? "text" : undefined}
+                            data-placeholder-width="long"
+                          >
+                            {researchLabel(candidate)}
+                          </span>
+                          {!loadingRows && issuesFor(candidate)[0] ? (
+                            <SemanticStatus
+                              tone={issuesFor(candidate)[0].tone ?? "pending"}
+                            >
+                              {issuesFor(candidate)[0].message}
+                            </SemanticStatus>
+                          ) : null}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <h2
-                    className={cn(
-                      "m-0 font-serif text-[clamp(1.75rem,2.7vw,2.45rem)] leading-[1.08] [overflow-wrap:anywhere]",
-                      loadingPlaceholder(loadingDetail, "text", "full"),
-                    )}
-                    data-placeholder={loadingDetail ? "text" : undefined}
-                    data-placeholder-width="full"
-                  >
-                    {researchLabel(item)}
-                  </h2>
-                  {item.summary ? (
-                    <p
+                </div>
+              ) : (
+                <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
+                  No submissions match these filters.
+                </p>
+              )}
+            </>
+          }
+          detail={
+            <>
+              {item ? (
+                <>
+                  {outsideQueue ? (
+                    <p className="m-0 font-mono text-[.62rem] tracking-[.08em] text-ink-muted uppercase">
+                      Opened from a link · not in the current queue view
+                    </p>
+                  ) : null}
+                  <header className="grid gap-[.65rem]">
+                    <div className="flex flex-wrap items-center gap-[.7rem] text-[.82rem] text-ink-muted">
+                      <div className="capitalize">
+                        <Badge tone="info" loading={loadingDetail}>
+                          {item.type.toLowerCase()}
+                        </Badge>
+                      </div>
+                      <span
+                        className={cn(
+                          "font-mono text-[.75rem] text-ink-muted",
+                          loadingPlaceholder(loadingDetail, "label", "long"),
+                        )}
+                        data-placeholder={loadingDetail ? "label" : undefined}
+                        data-placeholder-width="long"
+                      >
+                        Submitted by{" "}
+                        {item.submittedBy?.person?.fullName ??
+                          item.submittedBy?.email ??
+                          "Unknown member"}
+                      </span>
+                    </div>
+                    <h2
                       className={cn(
-                        "m-0 text-[.95rem] leading-[1.55] text-ink-muted",
+                        "m-0 font-sans text-[clamp(1.75rem,2.7vw,2.45rem)] leading-[1.08] [overflow-wrap:anywhere]",
                         loadingPlaceholder(loadingDetail, "text", "full"),
                       )}
                       data-placeholder={loadingDetail ? "text" : undefined}
                       data-placeholder-width="full"
                     >
-                      {item.summary}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      loading={loadingDetail}
-                      tone={
-                        item.reviewStatus === "PUBLISHED"
-                          ? "success"
-                          : item.reviewStatus === "REJECTED"
-                            ? "error"
-                            : "warning"
-                      }
-                    >
-                      {item.reviewStatus.replaceAll("_", " ").toLowerCase()}
-                    </Badge>
-                    {!loadingDetail
-                      ? issuesFor(item).map((issue, index) => (
-                          <SemanticStatus
-                            key={`${issue.code ?? issue.message}-${index}`}
-                            tone={issue.tone ?? "pending"}
-                          >
-                            {issue.message}
-                          </SemanticStatus>
-                        ))
-                      : null}
-                    <ButtonControl
-                      compact
-                      disabled={loadingDetail}
-                      onClick={() =>
-                        setEditingId((current) =>
-                          current === item.id ? undefined : item.id,
-                        )
-                      }
-                      variant="secondary"
-                    >
-                      {editing ? "Close editor" : "Edit record"}
-                    </ButtonControl>
-                  </div>
-                </header>
-                {editing ? (
-                  <ResearchRecordEditor
-                    item={item}
-                    onSubmit={saveRecordEdit}
-                    saving={editSaving}
-                  />
-                ) : null}
-                <section
-                  className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,2vw,1.35rem)]"
-                  aria-label="Source discovery"
-                >
-                  <div className="flex items-center justify-between gap-4 max-[640px]:flex-col max-[640px]:items-start">
-                    <div className="flex items-center gap-[.7rem]">
+                      {researchLabel(item)}
+                    </h2>
+                    {item.summary ? (
+                      <p
+                        className={cn(
+                          "m-0 text-[.95rem] leading-[1.55] text-ink-muted",
+                          loadingPlaceholder(loadingDetail, "text", "full"),
+                        )}
+                        data-placeholder={loadingDetail ? "text" : undefined}
+                        data-placeholder-width="full"
+                      >
+                        {item.summary}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge
-                        dot
                         loading={loadingDetail}
                         tone={
-                          !item.canonicalUrl
-                            ? "warning"
-                            : sourceTone(item.sourceSnapshot?.status)
+                          item.reviewStatus === "PUBLISHED"
+                            ? "success"
+                            : item.reviewStatus === "REJECTED"
+                              ? "error"
+                              : "warning"
                         }
                       >
-                        {!item.canonicalUrl
-                          ? "not provided"
-                          : (item.sourceSnapshot?.status.toLowerCase() ??
-                            "not checked")}
+                        {item.reviewStatus.replaceAll("_", " ").toLowerCase()}
                       </Badge>
-                      <h3 className="font-serif text-[clamp(1.15rem,1.7vw,1.35rem)] leading-[1.2]">
-                        Canonical source evidence
-                      </h3>
-                    </div>
-                    <ButtonControl
-                      compact
-                      disabled={sourcePending || !item.canonicalUrl}
-                      loading={loadingDetail}
-                      onClick={() => void rediscover(item.id)}
-                      variant="secondary"
-                    >
-                      {!item.canonicalUrl
-                        ? "No source URL"
-                        : sourcePending
-                          ? "Checking source…"
-                          : item.sourceSnapshot
-                            ? "Check source again"
-                            : "Check source"}
-                    </ButtonControl>
-                  </div>
-                  {loadingDetail ? (
-                    <span
-                      className={loadingPlaceholder(true, "label", "long")}
-                      data-placeholder="label"
-                      data-placeholder-width="long"
-                    />
-                  ) : !item.canonicalUrl ? (
-                    <SemanticStatus tone="warning">
-                      No canonical source URL was submitted. Contributor
-                      relationships can still be verified manually.
-                    </SemanticStatus>
-                  ) : !item.sourceSnapshot ? (
-                    <SemanticStatus tone="info">
-                      The canonical source has not been checked yet.
-                    </SemanticStatus>
-                  ) : item.sourceSnapshot.status === "PENDING" ? (
-                    <SemanticStatus tone="pending">
-                      Canonical source metadata is being checked.
-                    </SemanticStatus>
-                  ) : item.sourceSnapshot.status === "FAILED" ? (
-                    <SemanticStatus tone="error">
-                      The canonical source check failed. Check the source URL or
-                      try again.
-                    </SemanticStatus>
-                  ) : item.sourceSnapshot.status === "UNAVAILABLE" ? (
-                    <SemanticStatus tone="warning">
-                      No machine-readable source metadata was available. Manual
-                      review is still possible.
-                    </SemanticStatus>
-                  ) : sourceAuthorsDiffer(item) ? (
-                    <div className="grid gap-[.65rem]">
-                      <SemanticStatus tone="warning">
-                        Source metadata differs
-                      </SemanticStatus>
-                      <div className="flex flex-wrap gap-[.45rem] text-[.75rem] text-ink-muted">
-                        {item.sourceSnapshot.metadata?.authors?.map(
-                          ({ name }, index) => (
-                            <span key={name}>
-                              {index ? ` · ${name}` : name}
-                            </span>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  ) : item.sourceSnapshot.metadata?.authors?.length ? null : (
-                    <SemanticStatus tone="warning">
-                      No machine-readable contributor metadata was found. Manual
-                      linking remains available.
-                    </SemanticStatus>
-                  )}
-                </section>
-                <section
-                  className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,2vw,1.35rem)]"
-                  aria-label="Contributor verification"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="font-serif text-[clamp(1.15rem,1.7vw,1.35rem)] leading-[1.2]">
-                      Contributor relationships
-                    </h3>
-                    <span
-                      className={cn(
-                        "font-mono text-[.75rem] text-ink-muted",
-                        loadingPlaceholder(loadingDetail, "label", "medium"),
-                      )}
-                      data-placeholder={loadingDetail ? "label" : undefined}
-                      data-placeholder-width="medium"
-                    >
-                      {item.contributors.filter(({ person }) => person).length}/
-                      {item.contributors.length} linked
-                    </span>
-                  </div>
-                  {item.contributors.map((contributor) => {
-                    const key = `${item.id}:${contributor.sortOrder}`;
-                    const proposals = contributor.matches
-                      .filter(({ status }) => status === "PROPOSED")
-                      .sort(
-                        (left, right) =>
-                          (right.confidence ?? 0) - (left.confidence ?? 0),
-                      );
-                    const suggested = proposals[0];
-                    const selectedPersonId =
-                      manualPeople[key] ??
-                      contributor.person?.id ??
-                      suggested?.person.id ??
-                      "";
-                    const selectedMatch = contributor.matches.find(
-                      ({ person }) => person.id === selectedPersonId,
-                    );
-                    const verifiedCurrent = Boolean(
-                      contributor.person &&
-                      contributor.person.id === selectedPersonId,
-                    );
-                    const metadata = selectedMatch
-                      ? `${selectedMatch.status === "REJECTED" ? "Previously rejected · " : ""}${proposalReason(selectedMatch)}${selectedMatch.confidence !== null ? ` · ${Math.round(selectedMatch.confidence * 100)}% match` : ""}`
-                      : selectedPersonId
-                        ? "Manual selection · no automatic confidence score"
-                        : "No reliable registered-person match was found";
-                    const selectedIsSuggestion =
-                      selectedMatch?.status === "PROPOSED";
-                    const selectedWasRejected =
-                      selectedMatch?.status === "REJECTED";
-                    const selectedManually = Boolean(
-                      selectedPersonId && !selectedMatch && !verifiedCurrent,
-                    );
-                    const statusTone: BadgeTone = verifiedCurrent
-                      ? "success"
-                      : selectedIsSuggestion
-                        ? "warning"
-                        : selectedWasRejected
-                          ? "error"
-                          : selectedManually
-                            ? "info"
-                            : "neutral";
-                    const statusLabel = verifiedCurrent
-                      ? "Verified"
-                      : selectedIsSuggestion
-                        ? "Suggested"
-                        : selectedWasRejected
-                          ? "Previously rejected"
-                          : selectedManually
-                            ? "Manual"
-                            : "Unmatched";
-                    const rejectMatch = selectedIsSuggestion
-                      ? selectedMatch
-                      : undefined;
-                    const verificationBusy =
-                      relationBusy.has(key) ||
-                      relationBusy.has(selectedMatch?.id ?? "");
-                    return (
-                      <article
-                        className="grid min-w-0 gap-[.65rem] border-t border-line py-4 first:border-t-0 first:pt-0"
-                        key={key}
+                      {!loadingDetail
+                        ? issuesFor(item).map((issue, index) => (
+                            <SemanticStatus
+                              key={`${issue.code ?? issue.message}-${index}`}
+                              tone={issue.tone ?? "pending"}
+                            >
+                              {issue.message}
+                            </SemanticStatus>
+                          ))
+                        : null}
+                      <ButtonControl
+                        compact
+                        disabled={loadingDetail}
+                        loading={loadingDetail}
+                        onClick={() =>
+                          setEditingId((current) =>
+                            current === item.id ? undefined : item.id,
+                          )
+                        }
+                        variant="secondary"
                       >
-                        <div className="grid min-w-0 grid-cols-[minmax(180px,.72fr)_minmax(260px,1fr)_auto] items-center gap-[.65rem] max-[720px]:grid-cols-1">
-                          <strong
-                            className={cn(
-                              "min-w-0 [overflow-wrap:anywhere]",
-                              loadingPlaceholder(loadingDetail, "text", "long"),
-                            )}
-                            data-placeholder={
-                              loadingDetail ? "text" : undefined
-                            }
-                            data-placeholder-width="long"
-                          >
-                            {contributor.displayName}
-                          </strong>
-                          <SearchableSelect
-                            ariaLabel={`Match ${contributor.displayName} to a registered person`}
-                            disabled={loadingDetail}
-                            placeholderLoading={loadingDetail}
-                            onValueChange={(value) =>
-                              setManualPeople((current) => ({
-                                ...current,
-                                [key]: value,
-                              }))
-                            }
-                            options={people.map((person) => {
-                              const match = contributor.matches.find(
-                                ({ person: matchedPerson }) =>
-                                  matchedPerson.id === person.id,
-                              );
-                              return {
-                                label: person.fullName,
-                                value: person.id,
-                                ...(match
-                                  ? {
-                                      description: `${match.status === "REJECTED" ? "Previously rejected · " : match.status === "VERIFIED" ? "Verified · " : ""}${proposalReason(match)}${match.confidence !== null ? ` · ${Math.round(match.confidence * 100)}% match` : ""}`,
-                                    }
-                                  : {}),
-                              };
-                            })}
-                            placeholder="Search registered person…"
-                            searchPlaceholder="Search people…"
-                            value={selectedPersonId}
-                          />
-                          <div className="flex items-center justify-end gap-2 max-[720px]:justify-start">
-                            <ButtonControl
-                              compact
-                              disabled={
-                                !selectedPersonId ||
-                                verifiedCurrent ||
-                                verificationBusy
-                              }
-                              loading={loadingDetail}
-                              onClick={() =>
-                                void verifyContributor(
-                                  item.id,
-                                  contributor.sortOrder,
-                                  selectedPersonId,
-                                  selectedMatch,
-                                )
-                              }
-                              variant="primary"
-                            >
-                              {verificationBusy
-                                ? "Verifying…"
-                                : verifiedCurrent
-                                  ? "Verified"
-                                  : "Verify"}
-                            </ButtonControl>
-                            {rejectMatch ? (
-                              <ReviewActions
-                                className="gap-0"
-                                actions={[
-                                  {
-                                    confirmDescription: `Reject ${rejectMatch.person.fullName} as the selected suggested match for ${contributor.displayName}.`,
-                                    confirmLabel: "Reject suggestion",
-                                    confirmTitle:
-                                      "Reject this contributor match?",
-                                    disabled: relationBusy.has(rejectMatch.id),
-                                    label: "Reject",
-                                    notePlaceholder:
-                                      "Optional note about why this suggested contributor match is incorrect.",
-                                    requiresNote:
-                                      rejectMatch.source === "USER_CLAIM",
-                                    status: "REJECTED",
-                                    tone: "secondary",
-                                  },
-                                ]}
-                                onSubmit={(decision) =>
-                                  reviewMatch(item.id, rejectMatch.id, decision)
-                                }
-                                successBody={() =>
-                                  "The suggested contributor match was rejected."
-                                }
-                                successTitle="Contributor suggestion rejected"
-                              />
-                            ) : null}
-                          </div>
+                        {editing ? "Close editor" : "Edit record"}
+                      </ButtonControl>
+                    </div>
+                  </header>
+                  {editing ? (
+                    <ResearchRecordEditor
+                      item={item}
+                      onSubmit={saveRecordEdit}
+                      saving={editSaving}
+                    />
+                  ) : null}
+                  <section
+                    className="relative mx-[-1.25rem] grid w-[calc(100%+2.5rem)] gap-4 border-t border-line bg-transparent p-[clamp(1rem,2vw,1.35rem)]"
+                    aria-label="Source discovery"
+                  >
+                    <div className="flex items-center justify-between gap-4 max-[640px]:flex-col max-[640px]:items-start">
+                      <div className="flex items-center gap-[.7rem]">
+                        <Badge
+                          dot
+                          loading={loadingDetail}
+                          tone={
+                            !item.canonicalUrl
+                              ? "warning"
+                              : sourceTone(item.sourceSnapshot?.status)
+                          }
+                        >
+                          {!item.canonicalUrl
+                            ? "not provided"
+                            : (item.sourceSnapshot?.status.toLowerCase() ??
+                              "not checked")}
+                        </Badge>
+                        <h3
+                          className={cn(
+                            "font-sans text-[clamp(1.15rem,1.7vw,1.35rem)] leading-[1.2]",
+                            loadingPlaceholder(loadingDetail, "text", "medium"),
+                          )}
+                          data-placeholder={loadingDetail ? "text" : undefined}
+                          data-placeholder-width="medium"
+                        >
+                          Canonical source evidence
+                        </h3>
+                      </div>
+                      <ButtonControl
+                        compact
+                        disabled={sourcePending || !item.canonicalUrl}
+                        loading={loadingDetail}
+                        onClick={() => void rediscover(item.id)}
+                        variant="secondary"
+                      >
+                        {!item.canonicalUrl
+                          ? "No source URL"
+                          : sourcePending
+                            ? "Checking source…"
+                            : item.sourceSnapshot
+                              ? "Check source again"
+                              : "Check source"}
+                      </ButtonControl>
+                    </div>
+                    {loadingDetail ? (
+                      <span
+                        className={loadingPlaceholder(true, "label", "long")}
+                        data-placeholder="label"
+                        data-placeholder-width="long"
+                      />
+                    ) : !item.canonicalUrl ? (
+                      <SemanticStatus tone="warning">
+                        No canonical source URL was submitted. Contributor
+                        relationships can still be verified manually.
+                      </SemanticStatus>
+                    ) : !item.sourceSnapshot ? (
+                      <SemanticStatus tone="info">
+                        The canonical source has not been checked yet.
+                      </SemanticStatus>
+                    ) : item.sourceSnapshot.status === "PENDING" ? (
+                      <SemanticStatus tone="pending">
+                        Canonical source metadata is being checked.
+                      </SemanticStatus>
+                    ) : item.sourceSnapshot.status === "FAILED" ? (
+                      <SemanticStatus tone="error">
+                        The canonical source check failed. Check the source URL
+                        or try again.
+                      </SemanticStatus>
+                    ) : item.sourceSnapshot.status === "UNAVAILABLE" ? (
+                      <SemanticStatus tone="warning">
+                        No machine-readable source metadata was available.
+                        Manual review is still possible.
+                      </SemanticStatus>
+                    ) : sourceAuthorsDiffer(item) ? (
+                      <div className="grid gap-[.65rem]">
+                        <SemanticStatus tone="warning">
+                          Source metadata differs
+                        </SemanticStatus>
+                        <div className="flex flex-wrap gap-[.45rem] text-[.75rem] text-ink-muted">
+                          {item.sourceSnapshot.metadata?.authors?.map(
+                            ({ name }, index) => (
+                              <span key={name}>
+                                {index ? ` · ${name}` : name}
+                              </span>
+                            ),
+                          )}
                         </div>
-                        <div className="grid min-w-0 grid-cols-[minmax(180px,.72fr)_minmax(0,1fr)] items-start gap-[.65rem] max-[720px]:grid-cols-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge
-                              dot
-                              loading={loadingDetail}
-                              tone={statusTone}
-                            >
-                              {statusLabel}
-                            </Badge>
-                            <Badge loading={loadingDetail} tone="neutral">
-                              Author
-                            </Badge>
-                          </div>
-                          <div className="grid min-w-0 gap-1">
-                            <span
+                      </div>
+                    ) : item.sourceSnapshot.metadata?.authors?.length ? null : (
+                      <SemanticStatus tone="warning">
+                        No machine-readable contributor metadata was found.
+                        Manual linking remains available.
+                      </SemanticStatus>
+                    )}
+                  </section>
+                  <section
+                    className="relative mx-[-1.25rem] grid w-[calc(100%+2.5rem)] gap-4 border-t border-line bg-transparent p-[clamp(1rem,2vw,1.35rem)]"
+                    aria-label="Contributor verification"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <h3
+                        className={cn(
+                          "font-sans text-[clamp(1.15rem,1.7vw,1.35rem)] leading-[1.2]",
+                          loadingPlaceholder(loadingDetail, "text", "medium"),
+                        )}
+                        data-placeholder={loadingDetail ? "text" : undefined}
+                        data-placeholder-width="medium"
+                      >
+                        Contributor relationships
+                      </h3>
+                      <span
+                        className={cn(
+                          "font-mono text-[.75rem] text-ink-muted",
+                          loadingPlaceholder(loadingDetail, "label", "medium"),
+                        )}
+                        data-placeholder={loadingDetail ? "label" : undefined}
+                        data-placeholder-width="medium"
+                      >
+                        {
+                          item.contributors.filter(({ person }) => person)
+                            .length
+                        }
+                        /{item.contributors.length} linked
+                      </span>
+                    </div>
+                    {item.contributors.map((contributor) => {
+                      const key = `${item.id}:${contributor.sortOrder}`;
+                      const proposals = contributor.matches
+                        .filter(({ status }) => status === "PROPOSED")
+                        .sort(
+                          (left, right) =>
+                            (right.confidence ?? 0) - (left.confidence ?? 0),
+                        );
+                      const suggested = proposals[0];
+                      const selectedPersonId =
+                        manualPeople[key] ??
+                        contributor.person?.id ??
+                        suggested?.person.id ??
+                        "";
+                      const selectedMatch = contributor.matches.find(
+                        ({ person }) => person.id === selectedPersonId,
+                      );
+                      const verifiedCurrent = Boolean(
+                        contributor.person &&
+                        contributor.person.id === selectedPersonId,
+                      );
+                      const metadata = selectedMatch
+                        ? `${selectedMatch.status === "REJECTED" ? "Previously rejected · " : ""}${proposalReason(selectedMatch)}${selectedMatch.confidence !== null ? ` · ${Math.round(selectedMatch.confidence * 100)}% match` : ""}`
+                        : selectedPersonId
+                          ? "Manual selection · no automatic confidence score"
+                          : "No reliable registered-person match was found";
+                      const selectedIsSuggestion =
+                        selectedMatch?.status === "PROPOSED";
+                      const selectedWasRejected =
+                        selectedMatch?.status === "REJECTED";
+                      const selectedManually = Boolean(
+                        selectedPersonId && !selectedMatch && !verifiedCurrent,
+                      );
+                      const statusTone: BadgeTone = verifiedCurrent
+                        ? "success"
+                        : selectedIsSuggestion
+                          ? "warning"
+                          : selectedWasRejected
+                            ? "error"
+                            : selectedManually
+                              ? "info"
+                              : "neutral";
+                      const statusLabel = verifiedCurrent
+                        ? "Verified"
+                        : selectedIsSuggestion
+                          ? "Suggested"
+                          : selectedWasRejected
+                            ? "Previously rejected"
+                            : selectedManually
+                              ? "Manual"
+                              : "Unmatched";
+                      const rejectMatch = selectedIsSuggestion
+                        ? selectedMatch
+                        : undefined;
+                      const verificationBusy =
+                        relationBusy.has(key) ||
+                        relationBusy.has(selectedMatch?.id ?? "");
+                      return (
+                        <article
+                          className="grid min-w-0 gap-[.65rem] border-t border-line py-4 first:border-t-0 first:pt-0"
+                          key={key}
+                        >
+                          <div className="grid min-w-0 grid-cols-[minmax(180px,.72fr)_minmax(260px,1fr)_auto] items-center gap-[.65rem] max-[720px]:grid-cols-1">
+                            <strong
                               className={cn(
-                                "text-[.78rem] leading-[1.45]",
+                                "min-w-0 [overflow-wrap:anywhere]",
                                 loadingPlaceholder(
                                   loadingDetail,
                                   "text",
                                   "long",
                                 ),
-                                selectedMatch?.confidence === 1
-                                  ? "text-success"
-                                  : selectedMatch
-                                    ? "text-warning"
-                                    : "text-ink-muted",
                               )}
                               data-placeholder={
                                 loadingDetail ? "text" : undefined
                               }
                               data-placeholder-width="long"
                             >
-                              {metadata}
-                            </span>
+                              {contributor.displayName}
+                            </strong>
+                            <SearchableSelect
+                              ariaLabel={`Match ${contributor.displayName} to a registered person`}
+                              disabled={loadingDetail}
+                              placeholderLoading={loadingDetail}
+                              onValueChange={(value) =>
+                                setManualPeople((current) => ({
+                                  ...current,
+                                  [key]: value,
+                                }))
+                              }
+                              options={people.map((person) => {
+                                const match = contributor.matches.find(
+                                  ({ person: matchedPerson }) =>
+                                    matchedPerson.id === person.id,
+                                );
+                                return {
+                                  label: person.fullName,
+                                  value: person.id,
+                                  ...(match
+                                    ? {
+                                        description: `${match.status === "REJECTED" ? "Previously rejected · " : match.status === "VERIFIED" ? "Verified · " : ""}${proposalReason(match)}${match.confidence !== null ? ` · ${Math.round(match.confidence * 100)}% match` : ""}`,
+                                      }
+                                    : {}),
+                                };
+                              })}
+                              placeholder="Search registered person…"
+                              searchPlaceholder="Search people…"
+                              value={selectedPersonId}
+                            />
+                            <div className="flex items-center justify-end gap-2 max-[720px]:justify-start">
+                              <ButtonControl
+                                compact
+                                disabled={
+                                  !selectedPersonId ||
+                                  verifiedCurrent ||
+                                  verificationBusy
+                                }
+                                loading={loadingDetail}
+                                onClick={() =>
+                                  void verifyContributor(
+                                    item.id,
+                                    contributor.sortOrder,
+                                    selectedPersonId,
+                                    selectedMatch,
+                                  )
+                                }
+                                variant="primary"
+                              >
+                                {verificationBusy
+                                  ? "Verifying…"
+                                  : verifiedCurrent
+                                    ? "Verified"
+                                    : "Verify"}
+                              </ButtonControl>
+                              {rejectMatch ? (
+                                <ReviewActions
+                                  className="gap-0"
+                                  actions={[
+                                    {
+                                      confirmDescription: `Reject ${rejectMatch.person.fullName} as the selected suggested match for ${contributor.displayName}.`,
+                                      confirmLabel: "Reject suggestion",
+                                      confirmTitle:
+                                        "Reject this contributor match?",
+                                      disabled: relationBusy.has(
+                                        rejectMatch.id,
+                                      ),
+                                      label: "Reject",
+                                      notePlaceholder:
+                                        "Optional note about why this suggested contributor match is incorrect.",
+                                      requiresNote:
+                                        rejectMatch.source === "USER_CLAIM",
+                                      status: "REJECTED",
+                                      tone: "secondary",
+                                    },
+                                  ]}
+                                  onSubmit={(decision) =>
+                                    reviewMatch(
+                                      item.id,
+                                      rejectMatch.id,
+                                      decision,
+                                    )
+                                  }
+                                  successBody={() =>
+                                    "The suggested contributor match was rejected."
+                                  }
+                                  successTitle="Contributor suggestion rejected"
+                                />
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </section>
-                {(item.canonicalUrl ?? item.legacyUrl) ? (
-                  <ButtonAnchor
-                    className="justify-self-start"
-                    href={
-                      loadingDetail
-                        ? "#"
-                        : (item.canonicalUrl ?? item.legacyUrl ?? undefined)
-                    }
-                    loading={loadingDetail}
-                    rel="noreferrer"
-                    target="_blank"
-                    variant="secondary"
-                  >
-                    {item.canonicalUrl
-                      ? "Open canonical source"
-                      : "Open import source"}
-                  </ButtonAnchor>
-                ) : (
-                  <SemanticStatus loading={loadingDetail} tone="warning">
-                    No external source URL was provided. Manual source
-                    verification is required.
-                  </SemanticStatus>
-                )}
-                {error ? (
-                  <p className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted rounded-panel bg-danger-soft p-[.8rem] text-danger">
-                    {error}
-                  </p>
-                ) : null}
-                {item.reviewStatus === "PUBLISHED" ||
-                item.reviewStatus === "REJECTED" ? (
-                  <ReviewActions
-                    loading={loadingDetail}
-                    actions={[
-                      {
-                        confirmDescription:
-                          "The public/rejected decision is retained in history and the record returns to the manual verification queue.",
-                        confirmLabel: "Reopen record",
-                        confirmTitle: "Reopen this research record?",
-                        label: "Reopen for review",
-                        notePlaceholder:
-                          "Explain why this record needs to be reviewed again.",
-                        requiresNote: true,
-                        status: "NEEDS_REVIEW",
-                        tone: "secondary",
-                      },
-                    ]}
-                    onError={(requestError) =>
-                      item && captureItemError(item.id, requestError)
-                    }
-                    onSubmit={loadingDetail ? () => Promise.resolve() : decide}
-                    onSuccess={() => item && actionIssues.clearOne(item.id)}
-                    successBody={() =>
-                      "The record was reopened for manual review."
-                    }
-                    successTitle="Research record reopened"
-                  />
-                ) : (
-                  <ReviewActions
-                    loading={loadingDetail}
-                    actions={[
-                      {
-                        confirmDescription:
-                          "The record becomes public and a verified paper may trigger rank promotion.",
-                        confirmLabel: "Publish verified record",
-                        confirmTitle: "Publish this research record?",
-                        disabled: sourcePending || hasProposedMatches,
-                        label: sourcePending
-                          ? "Source check in progress"
-                          : hasProposedMatches
-                            ? "Resolve contributor matches"
-                            : "Publish",
-                        status: "PUBLISHED",
-                        tone: "primary",
-                      },
-                      {
-                        confirmDescription:
-                          "The submission returns to the member with your reviewer note.",
-                        confirmLabel: "Request changes",
-                        confirmTitle: "Send this back for changes?",
-                        label: "Add review",
-                        notePlaceholder:
-                          "Explain what must change before this can be approved.",
-                        pendingLabel: "Send review",
-                        requiresNote: true,
-                        status: "CHANGES_REQUESTED",
-                        tone: "secondary",
-                      },
-                      {
-                        confirmDescription:
-                          "The submission leaves the active queue as rejected.",
-                        confirmLabel: "Reject submission",
-                        confirmTitle: "Reject this research record?",
-                        label: "Reject",
-                        notePlaceholder:
-                          "Explain why this submission was rejected.",
-                        requiresNote: true,
-                        status: "REJECTED",
-                        tone: "danger",
-                      },
-                    ]}
-                    onError={(requestError) =>
-                      item && captureItemError(item.id, requestError)
-                    }
-                    onSubmit={loadingDetail ? () => Promise.resolve() : decide}
-                    onSuccess={() => item && actionIssues.clearOne(item.id)}
-                    successBody={(status) =>
-                      `The research record was moved to ${status.replaceAll("_", " ").toLowerCase()}.`
-                    }
-                    successTitle="Research review saved"
-                  />
-                )}
-              </>
-            ) : (
-              <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
-                Select a research submission.
-              </p>
-            )}
-          </section>
-        </div>
+                          <div className="grid min-w-0 grid-cols-[minmax(180px,.72fr)_minmax(0,1fr)] items-start gap-[.65rem] max-[720px]:grid-cols-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                dot
+                                loading={loadingDetail}
+                                tone={statusTone}
+                              >
+                                {statusLabel}
+                              </Badge>
+                              <Badge loading={loadingDetail} tone="neutral">
+                                Author
+                              </Badge>
+                            </div>
+                            <div className="grid min-w-0 gap-1">
+                              <span
+                                className={cn(
+                                  "text-[.78rem] leading-[1.45]",
+                                  loadingPlaceholder(
+                                    loadingDetail,
+                                    "text",
+                                    "long",
+                                  ),
+                                  selectedMatch?.confidence === 1
+                                    ? "text-success"
+                                    : selectedMatch
+                                      ? "text-warning"
+                                      : "text-ink-muted",
+                                )}
+                                data-placeholder={
+                                  loadingDetail ? "text" : undefined
+                                }
+                                data-placeholder-width="long"
+                              >
+                                {metadata}
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </section>
+                  {(item.canonicalUrl ?? item.legacyUrl) ? (
+                    <ButtonAnchor
+                      className="justify-self-start"
+                      href={
+                        loadingDetail
+                          ? "#"
+                          : (item.canonicalUrl ?? item.legacyUrl ?? undefined)
+                      }
+                      loading={loadingDetail}
+                      rel="noreferrer"
+                      target="_blank"
+                      variant="secondary"
+                    >
+                      {item.canonicalUrl
+                        ? "Open canonical source"
+                        : "Open import source"}
+                    </ButtonAnchor>
+                  ) : (
+                    <SemanticStatus loading={loadingDetail} tone="warning">
+                      No external source URL was provided. Manual source
+                      verification is required.
+                    </SemanticStatus>
+                  )}
+                  {error ? (
+                    <p className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted rounded-panel bg-danger-soft p-[.8rem] text-danger">
+                      {error}
+                    </p>
+                  ) : null}
+                  {item.reviewStatus === "PUBLISHED" ||
+                  item.reviewStatus === "REJECTED" ? (
+                    <ReviewActions
+                      loading={loadingDetail}
+                      actions={[
+                        {
+                          confirmDescription:
+                            "The public/rejected decision is retained in history and the record returns to the manual verification queue.",
+                          confirmLabel: "Reopen record",
+                          confirmTitle: "Reopen this research record?",
+                          label: "Reopen for review",
+                          notePlaceholder:
+                            "Explain why this record needs to be reviewed again.",
+                          requiresNote: true,
+                          status: "NEEDS_REVIEW",
+                          tone: "secondary",
+                        },
+                      ]}
+                      onError={(requestError) =>
+                        item && captureItemError(item.id, requestError)
+                      }
+                      onSubmit={
+                        loadingDetail ? () => Promise.resolve() : decide
+                      }
+                      onSuccess={() => item && actionIssues.clearOne(item.id)}
+                      successBody={() =>
+                        "The record was reopened for manual review."
+                      }
+                      successTitle="Research record reopened"
+                    />
+                  ) : (
+                    <ReviewActions
+                      loading={loadingDetail}
+                      actions={[
+                        {
+                          confirmDescription:
+                            "The record becomes public and a verified paper may trigger rank promotion.",
+                          confirmLabel: "Publish verified record",
+                          confirmTitle: "Publish this research record?",
+                          disabled: sourcePending || hasProposedMatches,
+                          label: sourcePending
+                            ? "Source check in progress"
+                            : hasProposedMatches
+                              ? "Resolve contributor matches"
+                              : "Publish",
+                          status: "PUBLISHED",
+                          tone: "primary",
+                        },
+                        {
+                          confirmDescription:
+                            "The submission returns to the member with your reviewer note.",
+                          confirmLabel: "Request changes",
+                          confirmTitle: "Send this back for changes?",
+                          label: "Add review",
+                          notePlaceholder:
+                            "Explain what must change before this can be approved.",
+                          pendingLabel: "Send review",
+                          requiresNote: true,
+                          status: "CHANGES_REQUESTED",
+                          tone: "secondary",
+                        },
+                        {
+                          confirmDescription:
+                            "The submission leaves the active queue as rejected.",
+                          confirmLabel: "Reject submission",
+                          confirmTitle: "Reject this research record?",
+                          label: "Reject",
+                          notePlaceholder:
+                            "Explain why this submission was rejected.",
+                          requiresNote: true,
+                          status: "REJECTED",
+                          tone: "danger",
+                        },
+                      ]}
+                      onError={(requestError) =>
+                        item && captureItemError(item.id, requestError)
+                      }
+                      onSubmit={
+                        loadingDetail ? () => Promise.resolve() : decide
+                      }
+                      onSuccess={() => item && actionIssues.clearOne(item.id)}
+                      successBody={(status) =>
+                        `The research record was moved to ${status.replaceAll("_", " ").toLowerCase()}.`
+                      }
+                      successTitle="Research review saved"
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
+                  {missingId && missingId === selected
+                    ? "This research record is no longer available. Choose another record from the queue."
+                    : "Select a research submission."}
+                </p>
+              )}
+            </>
+          }
+        />
       )}
     </div>
   );
@@ -1386,14 +1445,14 @@ function ResearchRecordEditor({
 }) {
   return (
     <form
-      className="grid gap-4 rounded-panel border border-line-strong bg-canvas p-[clamp(1rem,2vw,1.35rem)]"
+      className="grid gap-4 border border-line-strong bg-canvas p-[clamp(1rem,2vw,1.35rem)]"
       onSubmit={onSubmit}
     >
       <div className="grid gap-1">
         <span className="font-mono text-[.62rem] uppercase tracking-[.08em] text-brand">
           Record editor
         </span>
-        <strong className="font-serif text-[1.2rem] font-normal">
+        <strong className="font-sans text-[1.2rem] font-normal">
           Edit and re-run verification
         </strong>
         <p className="m-0 text-[.78rem] leading-[1.5] text-ink-muted">

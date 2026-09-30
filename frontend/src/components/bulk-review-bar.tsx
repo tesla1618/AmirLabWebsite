@@ -6,6 +6,7 @@ import { CheckboxControl } from "@/components/ui/checkbox-control";
 import { useId } from "react";
 import type { ApiRequestError } from "@/lib/client-api";
 import { SemanticStatus } from "@/components/ui/semantic-status";
+import { WorkspaceRuleBand } from "@/components/ui/workspace-surface";
 
 export function BulkReviewBar<Status extends string>({
   actions,
@@ -40,9 +41,9 @@ export function BulkReviewBar<Status extends string>({
   if (!selectableCount && !loading) return null;
 
   return (
-    <section
-      className="grid min-w-0 grid-cols-[minmax(160px,auto)_minmax(0,1fr)] items-center gap-4 rounded-panel border border-line bg-surface px-4 py-3 max-[720px]:grid-cols-1"
+    <WorkspaceRuleBand
       aria-label="Bulk review actions"
+      contentClassName="grid min-w-0 grid-cols-[minmax(160px,auto)_minmax(0,1fr)] items-center gap-4 px-[var(--workspace-gutter)] py-3 max-[720px]:grid-cols-1 max-[640px]:px-4"
     >
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <CheckboxControl
@@ -94,6 +95,6 @@ export function BulkReviewBar<Status extends string>({
           </ButtonControl>
         ) : null}
       </div>
-    </section>
+    </WorkspaceRuleBand>
   );
 }

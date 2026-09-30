@@ -181,7 +181,7 @@ export function ResearchConnectionsPanel() {
   if (!authLoading && staff) {
     return (
       <section
-        className="mt-6 grid gap-6 rounded-panel border border-line bg-surface p-[clamp(1.2rem,3vw,2rem)]"
+        className="frame-rail-section mt-6 grid gap-6 py-[clamp(1.2rem,3vw,2rem)]"
         aria-labelledby="research-admin-title"
       >
         <div>
@@ -189,7 +189,7 @@ export function ResearchConnectionsPanel() {
             Research administration
           </p>
           <h2
-            className="mt-[.35rem] font-serif text-[clamp(1.8rem,4vw,2.8rem)]"
+            className="mt-[.35rem] font-sans text-[clamp(1.8rem,4vw,2.8rem)]"
             id="research-admin-title"
           >
             Paper and dataset register
@@ -210,7 +210,7 @@ export function ResearchConnectionsPanel() {
   }
   return (
     <section
-      className="mt-6 grid gap-6 rounded-panel border border-line bg-surface p-[clamp(1.2rem,3vw,2rem)]"
+      className="frame-rail-section mt-6 grid gap-6 py-[clamp(1.2rem,3vw,2rem)]"
       aria-labelledby="research-connections-title"
       data-loading={loading || undefined}
     >
@@ -220,7 +220,7 @@ export function ResearchConnectionsPanel() {
             Entity relationships
           </p>
           <h2
-            className="mt-[.35rem] font-serif text-[clamp(1.8rem,4vw,2.8rem)]"
+            className="mt-[.35rem] font-sans text-[clamp(1.8rem,4vw,2.8rem)]"
             id="research-connections-title"
           >
             Research connections
@@ -302,7 +302,7 @@ export function ResearchConnectionsPanel() {
 
       {outputRequests.length ? (
         <div className="grid gap-3 border-l-[3px] border-warning bg-warning-soft p-4">
-          <h3 className="font-serif text-[1.05rem]">Awaiting verification</h3>
+          <h3 className="font-sans text-[1.05rem]">Awaiting verification</h3>
           {outputRequests.map((request) => (
             <div
               className="grid grid-cols-[auto_1fr] items-center gap-x-[.65rem] gap-y-1"
@@ -383,7 +383,7 @@ export function ResearchConnectionsPanel() {
                 <span className="font-mono text-[.62rem] uppercase text-brand">
                   {item.type.toLowerCase()}
                 </span>
-                <h3 className="mt-1 font-serif text-[1.2rem]">
+                <h3 className="mt-1 font-sans text-[1.2rem]">
                   {item.title ?? "Untitled research output"}
                 </h3>
               </div>

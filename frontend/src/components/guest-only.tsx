@@ -16,7 +16,7 @@ export function GuestOnly({ children }: { children: ReactNode }) {
   return (
     <div
       aria-busy={checkingSession || undefined}
-      className="grid min-h-svh w-full place-items-center py-[clamp(1.5rem,5vh,3.5rem)]"
+      className="w-full"
       data-loading={checkingSession || undefined}
     >
       <div

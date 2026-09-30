@@ -4,15 +4,16 @@ import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import type { ResearchItem } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { FramedRow } from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 
 export function PaperCard({
-  compact = false,
+  frame = false,
   item,
   loading = false,
 }: {
-  compact?: boolean;
+  frame?: boolean;
   item?: ResearchItem;
   loading?: boolean;
 }) {
@@ -36,16 +37,20 @@ export function PaperCard({
     ?.toLowerCase()
     .replaceAll("_", " ");
   const doi = normalizeDoi(item?.paper?.doi);
-
   return (
-    <article
+    <FramedRow
+      as="article"
       aria-busy={loading || undefined}
-      className={cn("border-b border-line bg-transparent", compact && "")}
+      bleed={frame}
+      className={cn("bg-transparent")}
       data-loading={loading || undefined}
     >
       <button
         aria-expanded={!loading && open}
-        className="block w-full cursor-pointer border-0 bg-transparent px-1 py-4 text-left text-inherit hover:bg-[color-mix(in_srgb,var(--brand-faint)_60%,transparent)] disabled:cursor-default disabled:hover:bg-transparent"
+        className={cn(
+          "group block w-full cursor-pointer border-0 bg-transparent px-1 py-3 text-left text-inherit hover:bg-transparent focus-visible:bg-surface-subtle disabled:cursor-default disabled:hover:bg-transparent",
+          frame && "px-[var(--public-gutter)]",
+        )}
         disabled={loading || !details}
         onClick={() => setOpen((current) => !current)}
         type="button"
@@ -64,7 +69,7 @@ export function PaperCard({
           </span>
           <strong
             className={cn(
-              "font-serif text-[1.06rem] leading-[1.34] font-medium transition-colors duration-[140ms] group-hover:text-brand",
+              "font-sans text-base leading-[1.35] font-medium tracking-[-.01em] transition-colors duration-[140ms] group-hover:text-brand",
               loading && loadingPlaceholder(true, "text", "long"),
             )}
             data-placeholder={loading ? "text" : undefined}
@@ -103,13 +108,18 @@ export function PaperCard({
         </span>
       </button>
       {!loading && open && details ? (
-        <div className="px-1 pb-[.8rem]">
+        <div className={cn("px-1 pb-3", frame && "px-[var(--public-gutter)]")}>
           <p className="m-0 max-w-[850px] text-[.76rem] leading-[1.65] text-ink-muted">
             {details}
           </p>
         </div>
       ) : null}
-      <footer className="mt-[.6rem] flex items-center justify-between gap-4 border-t border-dotted border-line px-1 pt-[.62rem] pb-[.8rem] max-[640px]:flex-col max-[640px]:items-start">
+      <footer
+        className={cn(
+          "flex items-center justify-between gap-4 px-1 pb-3 max-[640px]:flex-col max-[640px]:items-start",
+          frame && "px-[var(--public-gutter)]",
+        )}
+      >
         <span
           className={cn(
             "font-mono text-[.55rem] text-ink-muted [overflow-wrap:anywhere]",
@@ -140,7 +150,7 @@ export function PaperCard({
           </a>
         ) : null}
       </footer>
-    </article>
+    </FramedRow>
   );
 }
 

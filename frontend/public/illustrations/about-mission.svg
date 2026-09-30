@@ -1,26 +1,132 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 20 900 520" role="img" aria-labelledby="title desc">
-  <title id="title">AmirLab research mission</title>
-  <desc id="desc">Evidence, people, and accountability connect through reviewed research to create public value.</desc>
-  <style>
-    :root{--b:#05217b;--i:#171a22;--c:#f8f8f6;--s:#fff;--l:#dcdfe6}
-    text{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:var(--b);letter-spacing:.1em}.k{font-size:11px;opacity:.6}.m{font:500 27px Georgia,serif;fill:var(--i);letter-spacing:-.025em}.ring,.link{fill:none;stroke:var(--b)}.ring{stroke-opacity:.16;stroke-dasharray:5 13;animation:orbit 18s linear infinite;transform-box:fill-box;transform-origin:center}.ring.inner{animation-direction:reverse;animation-duration:12s}.link{stroke-opacity:.3;stroke-width:1.4}.node{fill:var(--c);stroke:var(--b);stroke-width:1.7}.halo{fill:var(--b);fill-opacity:.045;stroke:var(--b);stroke-opacity:.18;animation:breathe 4.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.pillar text{font-size:9px;font-weight:700}.core circle{fill:var(--b)}.core text{fill:white;font-size:10px;font-weight:700}.packet{fill:var(--b);filter:drop-shadow(0 0 4px #05217b66)}.value path{fill:none;stroke:var(--b);stroke-linecap:round;stroke-linejoin:round;stroke-width:1.7}.value text{font-size:9px;font-weight:700}.proof text{font-size:8px;opacity:.65}.proof rect{fill:var(--s);stroke:var(--l)}.proof circle{fill:var(--b)}
-    @keyframes orbit{to{transform:rotate(360deg)}}@keyframes breathe{50%{opacity:.5;transform:scale(1.14)}}@media(prefers-reduced-motion:reduce){.ring,.halo{animation:none}.packet{display:none}}
-  </style>
-  <g transform="translate(8)">
-    <text class="k" x="190" y="72">WHY AMIRLAB</text>
-    <g transform="translate(452 324)">
-      <circle class="ring" r="174"/><circle class="ring inner" r="112"/>
-      <path class="link" d="M-190-82 0 0 188-86M-172 116 0 0 195 105"/>
-      <g class="pillar" transform="translate(-190 -82)"><circle class="halo" r="34"/><circle class="node" r="20"/><path class="link" d="M-8-5h16M-8 0h16M-8 5h11"/><text text-anchor="middle" y="51">EVIDENCE</text></g>
-      <g class="pillar" transform="translate(188 -86)"><circle class="halo" r="34" style="animation-delay:-1.2s"/><circle class="node" r="20"/><circle class="link" cx="-6" cy="-3" r="4"/><circle class="link" cx="7" cy="-3" r="4"/><path class="link" d="M-13 9c2-7 12-7 14 0M0 9c2-7 12-7 14 0"/><text text-anchor="middle" y="51">PEOPLE</text></g>
-      <g class="pillar" transform="translate(-172 116)"><circle class="halo" r="34" style="animation-delay:-2.4s"/><circle class="node" r="20"/><path class="link" d="M0-10 10-6v8c0 7-5 11-10 14C-5 13-10 9-10 2v-8zM-5 1l4 4 7-8"/><text text-anchor="middle" y="51">ACCOUNTABILITY</text></g>
-      <g class="core"><circle class="halo" r="70" style="animation-delay:-3.6s"/><circle r="52"/><text text-anchor="middle" y="-4">REVIEWED</text><text text-anchor="middle" y="14">RESEARCH</text></g>
-      <circle class="packet" r="4"><animateMotion dur="5s" path="M-190-82 0 0" repeatCount="indefinite"/></circle>
-      <circle class="packet" r="4"><animateMotion begin="-1.7s" dur="5.5s" path="M188-86 0 0" repeatCount="indefinite"/></circle>
-      <circle class="packet" r="4"><animateMotion begin="-3.4s" dur="6s" path="M-172 116 0 0" repeatCount="indefinite"/></circle>
-      <g class="value" transform="translate(195 105)"><circle class="halo" r="38" style="animation-delay:-1.8s"/><circle class="node" r="22"/><path d="m-9 2 6 6L10-8"/><text text-anchor="middle" y="56">PUBLIC VALUE</text></g>
-      <circle class="packet" r="4"><animateMotion dur="4.6s" path="M0 0 195 105" repeatCount="indefinite"/></circle>
-    </g>
-    <g class="proof" transform="translate(610 478)"><rect width="82" height="25" rx="13"/><circle cx="14" cy="12.5" r="3"/><text x="25" y="16">TRACEABLE</text><g transform="translate(94)"><rect width="82" height="25" rx="13"/><circle cx="14" cy="12.5" r="3"/><text x="25" y="16">HUMAN</text></g></g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="t d">
+<title id="t">AMIR Lab as a research consortium</title>
+<desc id="d">University and industry members send work into AMIR Lab at the centre, which turns it into research, development, training and responsible practice.</desc>
+<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<style>
+text{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}
+.lbl{font-size:9px;fill:#1f2421;opacity:.55}
+.lblb{font-size:9px;fill:#315bd6;font-weight:600}
+.edge{fill:none;stroke:#aab3ad;stroke-linecap:round}
+.node{fill:#f7f8f6;stroke:#1f2421;stroke-opacity:.5;stroke-width:1}
+.pin{fill:#1f2421;opacity:.5}
+.in{fill:none;stroke:#315bd6;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:14 200;stroke-dashoffset:214;opacity:0;animation:in 8.0s linear infinite}
+.out{fill:none;stroke:#315bd6;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:12 200;stroke-dashoffset:212;opacity:0;animation:out 8.0s linear infinite}
+.core{fill:#315bd6;opacity:0;animation:core 8.0s ease-in-out infinite}
+.ring{fill:none;stroke:#315bd6;stroke-width:1;opacity:0;transform-box:fill-box;transform-origin:center;animation:ring 8.0s ease-out infinite}
+.orbit{fill:none;stroke:#315bd6;stroke-opacity:.3;stroke-dasharray:2 5;transform-origin:320px 240px;animation:spin 80s linear infinite}
+.inner{fill:none;stroke:#1f2421;stroke-opacity:.18;stroke-dasharray:3 4}
+@keyframes in{0%{stroke-dashoffset:214;opacity:0}1%{opacity:1}10.45%{opacity:1}11.25%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes out{0%{stroke-dashoffset:212;opacity:0}1%{opacity:1}6.08%{opacity:1}6.88%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes core{0%{opacity:0}2%,20%{opacity:var(--pk,.95)}30%,100%{opacity:0}}
+@keyframes ring{0%{opacity:.7;transform:scale(1)}10%,100%{opacity:0;transform:scale(2.2)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.in,.out{stroke-dashoffset:0;opacity:.3}.core{opacity:.6}}
+</style>
+<circle class="orbit" cx="320" cy="240" r="188"/>
+<circle class="inner" cx="320" cy="240" r="95"/>
+
+<path class="edge" d="M501.6 288.7L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M501.6 191.3L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M368.7 58.4L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M271.3 58.4L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M138.4 191.3L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M138.4 288.7L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M271.3 421.6L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M368.7 421.6L320 240" stroke-width="1" opacity=".55"/>
+<path class="edge" d="M320 240L387.2 172.8" stroke-width="1.3" opacity=".8"/>
+<path class="edge" d="M320 240L252.8 172.8" stroke-width="1.3" opacity=".8"/>
+<path class="edge" d="M320 240L252.8 307.2" stroke-width="1.3" opacity=".8"/>
+<path class="edge" d="M320 240L387.2 307.2" stroke-width="1.3" opacity=".8"/>
+<g filter="url(#glow)">
+<path class="in" pathLength="200" d="M494.8 286.8L320 240" style="animation-delay:0.00s"/>
+<path class="in" pathLength="200" d="M366.8 65.2L320 240" style="animation-delay:0.00s"/>
+<path class="in" pathLength="200" d="M273.2 65.2L320 240" style="animation-delay:0.00s"/>
+<path class="in" pathLength="200" d="M145.2 286.8L320 240" style="animation-delay:0.00s"/>
+<path class="in" pathLength="200" d="M366.8 414.8L320 240" style="animation-delay:0.00s"/>
+<path class="out" pathLength="200" d="M320 240L387.2 172.8" style="animation-delay:1.10s"/>
+<path class="out" pathLength="200" d="M320 240L252.8 172.8" style="animation-delay:1.10s"/>
+<path class="out" pathLength="200" d="M320 240L252.8 307.2" style="animation-delay:1.10s"/>
+<path class="out" pathLength="200" d="M320 240L387.2 307.2" style="animation-delay:1.10s"/>
+<path class="in" pathLength="200" d="M494.8 193.2L320 240" style="animation-delay:4.00s"/>
+<path class="in" pathLength="200" d="M273.2 65.2L320 240" style="animation-delay:4.00s"/>
+<path class="in" pathLength="200" d="M145.2 193.2L320 240" style="animation-delay:4.00s"/>
+<path class="in" pathLength="200" d="M273.2 414.8L320 240" style="animation-delay:4.00s"/>
+<path class="in" pathLength="200" d="M366.8 414.8L320 240" style="animation-delay:4.00s"/>
+<path class="out" pathLength="200" d="M320 240L387.2 172.8" style="animation-delay:5.10s"/>
+<path class="out" pathLength="200" d="M320 240L252.8 172.8" style="animation-delay:5.10s"/>
+<path class="out" pathLength="200" d="M320 240L252.8 307.2" style="animation-delay:5.10s"/>
+<path class="out" pathLength="200" d="M320 240L387.2 307.2" style="animation-delay:5.10s"/>
+</g>
+<rect class="node" x="495.1" y="282.2" width="13" height="13"/>
+<rect class="core" x="496.9" y="284.0" width="9.4" height="9.4" style="--pk:0.95;animation-delay:0.00s"/>
+<rect class="ring" x="495.1" y="282.2" width="13" height="13" style="animation-delay:0.00s"/>
+<rect class="pin" x="500.8" y="287.9" width="1.5" height="1.5"/>
+<circle class="node" cx="501.6" cy="191.3" r="7"/>
+<circle class="core" cx="501.6" cy="191.3" r="5.0" style="--pk:0.95;animation-delay:4.00s"/>
+<circle class="ring" cx="501.6" cy="191.3" r="7.0" style="animation-delay:4.00s"/>
+<rect class="pin" x="500.8" y="190.6" width="1.5" height="1.5"/>
+<circle class="node" cx="368.7" cy="58.4" r="7"/>
+<circle class="core" cx="368.7" cy="58.4" r="5.0" style="--pk:0.95;animation-delay:0.00s"/>
+<circle class="ring" cx="368.7" cy="58.4" r="7.0" style="animation-delay:0.00s"/>
+<rect class="pin" x="367.9" y="57.7" width="1.5" height="1.5"/>
+<circle class="node" cx="271.3" cy="58.4" r="7"/>
+<circle class="core" cx="271.3" cy="58.4" r="5.0" style="--pk:0.95;animation-delay:0.00s"/>
+<circle class="ring" cx="271.3" cy="58.4" r="7.0" style="animation-delay:0.00s"/>
+<circle class="core" cx="271.3" cy="58.4" r="5.0" style="--pk:0.95;animation-delay:4.00s"/>
+<circle class="ring" cx="271.3" cy="58.4" r="7.0" style="animation-delay:4.00s"/>
+<rect class="pin" x="270.6" y="57.7" width="1.5" height="1.5"/>
+<circle class="node" cx="138.4" cy="191.3" r="7"/>
+<circle class="core" cx="138.4" cy="191.3" r="5.0" style="--pk:0.95;animation-delay:4.00s"/>
+<circle class="ring" cx="138.4" cy="191.3" r="7.0" style="animation-delay:4.00s"/>
+<rect class="pin" x="137.7" y="190.6" width="1.5" height="1.5"/>
+<circle class="node" cx="138.4" cy="288.7" r="7"/>
+<circle class="core" cx="138.4" cy="288.7" r="5.0" style="--pk:0.95;animation-delay:0.00s"/>
+<circle class="ring" cx="138.4" cy="288.7" r="7.0" style="animation-delay:0.00s"/>
+<rect class="pin" x="137.7" y="287.9" width="1.5" height="1.5"/>
+<rect class="node" x="264.8" y="415.1" width="13" height="13"/>
+<rect class="core" x="266.7" y="416.9" width="9.4" height="9.4" style="--pk:0.95;animation-delay:4.00s"/>
+<rect class="ring" x="264.8" y="415.1" width="13" height="13" style="animation-delay:4.00s"/>
+<rect class="pin" x="270.6" y="420.8" width="1.5" height="1.5"/>
+<rect class="node" x="362.2" y="415.1" width="13" height="13"/>
+<rect class="core" x="364.0" y="416.9" width="9.4" height="9.4" style="--pk:0.95;animation-delay:0.00s"/>
+<rect class="ring" x="362.2" y="415.1" width="13" height="13" style="animation-delay:0.00s"/>
+<rect class="core" x="364.0" y="416.9" width="9.4" height="9.4" style="--pk:0.95;animation-delay:4.00s"/>
+<rect class="ring" x="362.2" y="415.1" width="13" height="13" style="animation-delay:4.00s"/>
+<rect class="pin" x="367.9" y="420.8" width="1.5" height="1.5"/>
+<rect class="node" x="381.7" y="167.3" width="11" height="11"/>
+<rect class="core" x="383.2" y="168.9" width="7.9" height="7.9" style="--pk:0.95;animation-delay:1.60s"/>
+<rect class="ring" x="381.7" y="167.3" width="11" height="11" style="animation-delay:1.60s"/>
+<rect class="core" x="383.2" y="168.9" width="7.9" height="7.9" style="--pk:0.95;animation-delay:5.60s"/>
+<rect class="ring" x="381.7" y="167.3" width="11" height="11" style="animation-delay:5.60s"/>
+<rect class="pin" x="386.4" y="172.1" width="1.5" height="1.5"/>
+<text class="lblb" x="399.2" y="175.8" text-anchor="start">RESEARCH</text>
+<rect class="node" x="247.3" y="167.3" width="11" height="11"/>
+<rect class="core" x="248.9" y="168.9" width="7.9" height="7.9" style="--pk:0.95;animation-delay:1.60s"/>
+<rect class="ring" x="247.3" y="167.3" width="11" height="11" style="animation-delay:1.60s"/>
+<rect class="core" x="248.9" y="168.9" width="7.9" height="7.9" style="--pk:0.95;animation-delay:5.60s"/>
+<rect class="ring" x="247.3" y="167.3" width="11" height="11" style="animation-delay:5.60s"/>
+<rect class="pin" x="252.1" y="172.1" width="1.5" height="1.5"/>
+<text class="lblb" x="240.8" y="175.8" text-anchor="end">DEVELOPMENT</text>
+<rect class="node" x="247.3" y="301.7" width="11" height="11"/>
+<rect class="core" x="248.9" y="303.2" width="7.9" height="7.9" style="--pk:0.95;animation-delay:1.60s"/>
+<rect class="ring" x="247.3" y="301.7" width="11" height="11" style="animation-delay:1.60s"/>
+<rect class="core" x="248.9" y="303.2" width="7.9" height="7.9" style="--pk:0.95;animation-delay:5.60s"/>
+<rect class="ring" x="247.3" y="301.7" width="11" height="11" style="animation-delay:5.60s"/>
+<rect class="pin" x="252.1" y="306.4" width="1.5" height="1.5"/>
+<text class="lblb" x="240.8" y="310.2" text-anchor="end">TRAINING</text>
+<rect class="node" x="381.7" y="301.7" width="11" height="11"/>
+<rect class="core" x="383.2" y="303.2" width="7.9" height="7.9" style="--pk:0.95;animation-delay:1.60s"/>
+<rect class="ring" x="381.7" y="301.7" width="11" height="11" style="animation-delay:1.60s"/>
+<rect class="core" x="383.2" y="303.2" width="7.9" height="7.9" style="--pk:0.95;animation-delay:5.60s"/>
+<rect class="ring" x="381.7" y="301.7" width="11" height="11" style="animation-delay:5.60s"/>
+<rect class="pin" x="386.4" y="306.4" width="1.5" height="1.5"/>
+<text class="lblb" x="399.2" y="304.7" text-anchor="start">RESPONSIBLE</text>
+<text class="lblb" x="399.2" y="315.7" text-anchor="start">PRACTICE</text>
+<rect x="303" y="223" width="34" height="34" fill="none" stroke="#315bd6" stroke-opacity=".35" stroke-dasharray="2 3"/>
+<rect class="node" x="309" y="229" width="22" height="22"/>
+<rect class="core" x="312.1" y="232.1" width="15.8" height="15.8" style="--pk:0.95;animation-delay:0.85s"/>
+<rect class="ring" x="309.0" y="229.0" width="22" height="22" style="animation-delay:0.85s"/>
+<rect class="core" x="312.1" y="232.1" width="15.8" height="15.8" style="--pk:0.95;animation-delay:4.85s"/>
+<rect class="ring" x="309.0" y="229.0" width="22" height="22" style="animation-delay:4.85s"/>
+<rect class="pin" x="319" y="239" width="2" height="2"/>
 </svg>

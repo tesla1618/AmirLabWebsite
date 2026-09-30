@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import type { ResearchItem } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { FramedRow } from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 
@@ -9,10 +10,12 @@ export function ResearchCard({
   item,
   loading = false,
   variant = "card",
+  frame = false,
 }: {
   item?: ResearchItem;
   loading?: boolean;
   variant?: "card" | "index";
+  frame?: boolean;
 }) {
   const meta =
     item?.paper?.venue ??
@@ -35,21 +38,25 @@ export function ResearchCard({
   const index = variant === "index";
 
   return (
-    <article
+    <FramedRow
+      as="article"
       aria-busy={loading || undefined}
+      bleed={index && frame}
       className={cn(
         index
-          ? "grid min-h-0 grid-cols-[95px_minmax(0,1fr)_150px] gap-[.4rem] border-b border-line bg-transparent px-[.2rem] py-4 max-[640px]:grid-cols-[70px_minmax(0,1fr)]"
+          ? "grid min-h-0 grid-cols-[95px_minmax(0,1fr)_150px] gap-[.4rem] bg-transparent px-[.2rem] py-4 max-[640px]:grid-cols-[70px_minmax(0,1fr)]"
           : "flex min-h-[250px] flex-col",
+        index && frame && "px-[var(--public-gutter)]",
       )}
       data-loading={loading || undefined}
+      rule={index}
     >
       <div className={index ? "self-start justify-self-start" : undefined}>
         <Badge loading={loading}>{typeLabel}</Badge>
       </div>
       <h3
         className={cn(
-          "font-serif",
+          "m-0 font-sans text-base font-medium tracking-[-.01em]",
           index && "col-start-2 row-start-1 m-0 text-[1.12rem] font-medium",
           loading && loadingPlaceholder(true, "text", "long"),
         )}
@@ -121,6 +128,6 @@ export function ResearchCard({
           Open source <ExternalLink aria-hidden="true" size={15} />
         </a>
       ) : null}
-    </article>
+    </FramedRow>
   );
 }

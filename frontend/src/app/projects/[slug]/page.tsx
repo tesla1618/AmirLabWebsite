@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, Check, Circle } from "lucide-react";
-import { Eyebrow, PublicShell } from "@/components/ui/public-shell";
+import {
+  Eyebrow,
+  PublicSection,
+  PublicShell,
+} from "@/components/ui/public-shell";
 import { getResearchItem } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
@@ -59,74 +63,76 @@ export default async function ProjectDetailPage({
   ];
 
   return (
-    <main>
-      <header className="border-b border-line-strong py-[clamp(2.4rem,5vw,4rem)]">
-        <PublicShell className="grid grid-cols-[minmax(0,1.35fr)_minmax(260px,.65fr)] items-end gap-[clamp(2rem,5vw,4.5rem)] max-[760px]:grid-cols-1">
-          <div>
-            <div className="mb-3 flex items-center gap-[.65rem] font-mono text-[.56rem] text-ink-muted uppercase">
-              {project.status ? (
-                <span className={statusBadge}>
-                  {project.status.replaceAll("_", " ")}
-                </span>
-              ) : null}
-              <span>Research project</span>
-            </div>
-            <h1 className="m-0 font-serif text-[clamp(2.5rem,5vw,4.7rem)] leading-[.96] font-medium tracking-[-.045em]">
-              {item.title}
-            </h1>
-            {item.summary || project.objective ? (
-              <p className="mt-4 max-w-[720px] text-[.86rem] leading-[1.65] text-ink-muted">
-                {item.summary ?? project.objective}
-              </p>
-            ) : null}
-          </div>
-          <aside className="border-t border-line-strong pt-[.7rem]">
-            <div className="flex items-end justify-between">
-              <strong className="font-mono text-[1.6rem] font-medium">
-                {progress}%
-              </strong>
-              <span className="font-mono text-[.54rem] text-ink-muted uppercase">
-                Overall progress
+    <div>
+      <PublicSection
+        as="header"
+        boundary="bottom"
+        contentClassName="grid grid-cols-[minmax(0,1.35fr)_minmax(260px,.65fr)] items-end gap-[clamp(2rem,5vw,4.5rem)] py-[clamp(2.4rem,5vw,4rem)] max-[760px]:grid-cols-1"
+      >
+        <div className="relative z-[1]">
+          <div className="mb-3 flex items-center gap-[.65rem] font-mono text-[.56rem] text-ink-muted uppercase">
+            {project.status ? (
+              <span className={statusBadge}>
+                {project.status.replaceAll("_", " ")}
               </span>
+            ) : null}
+            <span>Research project</span>
+          </div>
+          <h1 className="m-0 font-serif text-[clamp(2.5rem,5vw,4.7rem)] leading-[.96] font-medium tracking-[-.045em]">
+            {item.title}
+          </h1>
+          {item.summary || project.objective ? (
+            <p className="mt-4 max-w-[720px] text-[.86rem] leading-[1.65] text-ink-muted">
+              {item.summary ?? project.objective}
+            </p>
+          ) : null}
+        </div>
+        <aside className="relative z-[1] border-t border-line-strong pt-[.7rem]">
+          <div className="flex items-end justify-between">
+            <strong className="font-mono text-[1.6rem] font-medium">
+              {progress}%
+            </strong>
+            <span className="font-mono text-[.54rem] text-ink-muted uppercase">
+              Overall progress
+            </span>
+          </div>
+          <svg
+            aria-label={`${progress}% complete`}
+            className="my-[.65rem] h-[2px] w-full"
+            preserveAspectRatio="none"
+            role="img"
+            viewBox="0 0 100 2"
+          >
+            <rect className="fill-line" height="2" width="100" x="0" y="0" />
+            <rect
+              className="fill-brand"
+              height="2"
+              width={progress}
+              x="0"
+              y="0"
+            />
+          </svg>
+          <dl className="grid grid-cols-2 gap-[.6rem]">
+            <div className="border-t border-line pt-2">
+              <dt className="font-mono text-[.54rem] text-ink-muted uppercase">
+                Milestones
+              </dt>
+              <dd className="mt-[.2rem] mb-0 text-[.7rem]">
+                {milestones.filter((m) => m.status === "COMPLETE").length} /{" "}
+                {milestones.length}
+              </dd>
             </div>
-            <svg
-              aria-label={`${progress}% complete`}
-              className="my-[.65rem] h-[2px] w-full"
-              preserveAspectRatio="none"
-              role="img"
-              viewBox="0 0 100 2"
-            >
-              <rect className="fill-line" height="2" width="100" x="0" y="0" />
-              <rect
-                className="fill-brand"
-                height="2"
-                width={progress}
-                x="0"
-                y="0"
-              />
-            </svg>
-            <dl className="grid grid-cols-2 gap-[.6rem]">
-              <div className="border-t border-line pt-2">
-                <dt className="font-mono text-[.54rem] text-ink-muted uppercase">
-                  Milestones
-                </dt>
-                <dd className="mt-[.2rem] mb-0 text-[.7rem]">
-                  {milestones.filter((m) => m.status === "COMPLETE").length} /{" "}
-                  {milestones.length}
-                </dd>
-              </div>
-              <div className="border-t border-line pt-2">
-                <dt className="font-mono text-[.54rem] text-ink-muted uppercase">
-                  Team
-                </dt>
-                <dd className="mt-[.2rem] mb-0 text-[.7rem]">
-                  {project.memberships?.length ?? 0}
-                </dd>
-              </div>
-            </dl>
-          </aside>
-        </PublicShell>
-      </header>
+            <div className="border-t border-line pt-2">
+              <dt className="font-mono text-[.54rem] text-ink-muted uppercase">
+                Team
+              </dt>
+              <dd className="mt-[.2rem] mb-0 text-[.7rem]">
+                {project.memberships?.length ?? 0}
+              </dd>
+            </div>
+          </dl>
+        </aside>
+      </PublicSection>
       <PublicShell className="grid grid-cols-[180px_minmax(0,1fr)] gap-[clamp(2rem,5vw,4.5rem)] py-[clamp(2.5rem,5vw,4rem)] max-[760px]:grid-cols-1">
         <aside className="sticky top-[76px] grid self-start max-[760px]:hidden">
           <Eyebrow>On this page</Eyebrow>
@@ -282,7 +288,7 @@ export default async function ProjectDetailPage({
           </ProjectSection>
         </div>
       </PublicShell>
-    </main>
+    </div>
   );
 }
 

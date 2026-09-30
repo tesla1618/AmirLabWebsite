@@ -17,14 +17,27 @@ export function FormField({
   labelClassName?: string;
 }) {
   return (
-    <div className={cn("field grid content-start gap-[.45rem]", className)}>
+    <div className={cn(className, "field grid content-start gap-1.5")}>
       {label ? (
         htmlFor ? (
-          <label className={labelClassName} htmlFor={htmlFor}>
+          <label
+            className={cn(
+              labelClassName,
+              "font-sans text-[11px] leading-[1.4] font-medium text-ink-muted",
+            )}
+            htmlFor={htmlFor}
+          >
             {label}
           </label>
         ) : (
-          <span className={labelClassName}>{label}</span>
+          <span
+            className={cn(
+              labelClassName,
+              "font-sans text-[11px] leading-[1.4] font-medium text-ink-muted",
+            )}
+          >
+            {label}
+          </span>
         )
       ) : null}
       {children}
@@ -49,10 +62,11 @@ export function FormMessage({
       className={cn(
         "m-0 text-[.82rem] leading-[1.5]",
         tone === "error" &&
-          "rounded-panel bg-danger-soft p-[.8rem] text-danger",
+          "rounded-small border border-danger/25 bg-danger-soft p-[.8rem] text-danger",
         tone === "success" &&
-          "rounded-panel bg-success-soft p-[.8rem] text-success",
-        tone === "info" && "rounded-panel bg-info-soft p-[.8rem] text-info",
+          "rounded-small border border-success/25 bg-success-soft p-[.8rem] text-success",
+        tone === "info" &&
+          "rounded-small border border-info/25 bg-info-soft p-[.8rem] text-info",
         tone === "muted" && "text-ink-muted",
       )}
       role={

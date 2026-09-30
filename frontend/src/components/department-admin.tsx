@@ -10,7 +10,11 @@ import { AdminOnly } from "@/components/admin-only";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useNotifications } from "@/components/notification-provider";
 import { StatePanel } from "@/components/state-panel";
-import { WorkspaceRecord } from "@/components/workspace-record";
+import {
+  WorkspaceRecord,
+  WorkspaceRecordForm,
+  WorkspaceRecordPanel,
+} from "@/components/workspace-record";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { Badge } from "@/components/ui/badge";
 import { ButtonControl } from "@/components/ui/button-control";
@@ -26,6 +30,10 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import { useReviewIssues } from "@/lib/use-review-issues";
+import {
+  WorkspaceCollection,
+  WorkspaceRow,
+} from "@/components/ui/workspace-surface";
 
 const EMPTY_DEPARTMENT: Department = {
   abbreviation: null,
@@ -83,6 +91,7 @@ export function DepartmentIndex() {
     <AdminOnly>
       {error && !loading ? (
         <StatePanel
+          frame="workspace"
           action={{ label: "Retry", onClick: load }}
           body="The connection dropped. Nothing was changed."
           title={error}
@@ -90,67 +99,69 @@ export function DepartmentIndex() {
         />
       ) : !loading && !departments.length ? (
         <StatePanel
+          frame="workspace"
           body="Create the first public research unit from the page action above."
           title="No departments yet"
         />
       ) : (
-        <div className="grid gap-[.7rem]" data-loading={loading || undefined}>
+        <WorkspaceCollection data-loading={loading || undefined}>
           {(loading && !departments.length
             ? Array.from({ length: 5 }, () => undefined)
             : departments
           ).map((department, index) => (
-            <Link
-              aria-disabled={loading || !department}
-              className="flex items-center justify-between gap-4 rounded-panel border border-line bg-surface px-[1.1rem] py-4 text-inherit hover:border-[color-mix(in_srgb,var(--brand)_45%,var(--line))]"
-              href={
-                department ? `/workspace/departments/${department.id}` : "#"
-              }
-              key={department?.id ?? `department-loading-${index}`}
-              tabIndex={loading ? -1 : undefined}
-            >
-              <div>
-                <strong
-                  className={cn(
-                    "text-[.98rem] leading-[1.35]",
-                    loadingPlaceholder(loading, "text", "long"),
-                  )}
-                  data-placeholder="text"
-                  data-placeholder-width="long"
-                >
-                  {department?.name ?? "Loading department"}
-                </strong>
-                <div className="mt-[.35rem] flex flex-wrap items-center gap-2">
-                  <small
+            <WorkspaceRow key={department?.id ?? `department-loading-${index}`}>
+              <Link
+                aria-disabled={loading || !department}
+                className="flex min-h-[64px] items-center justify-between gap-4 bg-transparent py-[.72rem] text-inherit transition-colors hover:bg-surface-subtle"
+                href={
+                  department ? `/workspace/departments/${department.id}` : "#"
+                }
+                tabIndex={loading ? -1 : undefined}
+              >
+                <div>
+                  <strong
                     className={cn(
-                      "font-mono text-[.7rem] text-ink-muted",
-                      loadingPlaceholder(loading, "label", "medium"),
+                      "text-[.84rem] font-medium leading-[1.35]",
+                      loadingPlaceholder(loading, "text", "long"),
                     )}
-                    data-placeholder="label"
-                    data-placeholder-width="medium"
+                    data-placeholder="text"
+                    data-placeholder-width="long"
                   >
-                    {department
-                      ? `${department.people.length} member${department.people.length === 1 ? "" : "s"}`
-                      : "Loading members"}
-                  </small>
-                  {department ? (
-                    <SemanticStatus
-                      loading={loading}
-                      tone={department.isPublished ? "success" : "warning"}
+                    {department?.name ?? "Loading department"}
+                  </strong>
+                  <div className="mt-[.35rem] flex flex-wrap items-center gap-2">
+                    <small
+                      className={cn(
+                        "font-mono text-[.6rem] text-ink-muted",
+                        loadingPlaceholder(loading, "label", "medium"),
+                      )}
+                      data-placeholder="label"
+                      data-placeholder-width="medium"
                     >
-                      {department.isPublished ? "Published" : "Draft"}
-                    </SemanticStatus>
-                  ) : null}
+                      {department
+                        ? `${department.people.length} member${department.people.length === 1 ? "" : "s"}`
+                        : "Loading members"}
+                    </small>
+                    {department ? (
+                      <SemanticStatus
+                        loading={loading}
+                        tone={department.isPublished ? "success" : "warning"}
+                      >
+                        {department.isPublished ? "Published" : "Draft"}
+                      </SemanticStatus>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <ArrowRight
-                aria-hidden="true"
-                className={loading ? "opacity-[.12]" : undefined}
-                data-loading-icon={loading ? "true" : undefined}
-                size={17}
-              />
-            </Link>
+                <ArrowRight
+                  aria-hidden="true"
+                  className={loading ? "opacity-[.12]" : undefined}
+                  data-loading-icon={loading ? "true" : undefined}
+                  size={17}
+                />
+              </Link>
+            </WorkspaceRow>
           ))}
-        </div>
+        </WorkspaceCollection>
       )}
     </AdminOnly>
   );
@@ -353,8 +364,8 @@ export function DepartmentEditor({ id }: { id?: string }) {
           department.name || (loading ? "Loading department" : "New department")
         }
       >
-        <form
-          className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)] gap-[1.2rem]"
+        <WorkspaceRecordForm
+          className="gap-[1.2rem]"
           data-loading={loading || undefined}
           id="department-record"
           onSubmit={save}
@@ -363,7 +374,7 @@ export function DepartmentEditor({ id }: { id?: string }) {
             <p className="m-0 font-mono text-[.62rem] font-semibold uppercase tracking-[.1em] text-brand">
               Details
             </p>
-            <h2 className="m-0 font-serif text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
+            <h2 className="m-0 font-sans text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
               Department information
             </h2>
           </header>
@@ -417,17 +428,14 @@ export function DepartmentEditor({ id }: { id?: string }) {
               {error}
             </p>
           ) : null}
-        </form>
+        </WorkspaceRecordForm>
         {id ? (
-          <section
-            className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)]"
-            data-loading={loading || undefined}
-          >
+          <WorkspaceRecordPanel data-loading={loading || undefined}>
             <header className="grid gap-[.35rem] border-b border-line pb-[1.15rem]">
               <p className="m-0 font-mono text-[.62rem] font-semibold uppercase tracking-[.1em] text-brand">
                 Membership
               </p>
-              <h2 className="m-0 font-serif text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
+              <h2 className="m-0 font-sans text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
                 Department team
               </h2>
               <p className="m-0 text-[.82rem] leading-[1.55] text-ink-muted">
@@ -547,15 +555,15 @@ export function DepartmentEditor({ id }: { id?: string }) {
                 Add member
               </ButtonControl>
             </div>
-          </section>
+          </WorkspaceRecordPanel>
         ) : null}
         {id ? (
-          <section className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-danger/40 bg-danger-soft/30 p-[clamp(1.25rem,3vw,2rem)]">
+          <WorkspaceRecordPanel className="border-danger/40 bg-danger-soft/30">
             <header className="grid gap-[.35rem] border-b border-danger/30 pb-[1.15rem]">
               <p className="m-0 font-mono text-[.62rem] font-semibold uppercase tracking-[.1em] text-danger">
                 Danger zone
               </p>
-              <h2 className="m-0 font-serif text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
+              <h2 className="m-0 font-sans text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
                 Delete department
               </h2>
               <p className="m-0 text-[.82rem] leading-[1.55] text-ink-muted">
@@ -570,7 +578,7 @@ export function DepartmentEditor({ id }: { id?: string }) {
             >
               <Trash2 size={14} /> Delete this department
             </ButtonControl>
-          </section>
+          </WorkspaceRecordPanel>
         ) : null}
       </WorkspaceRecord>
       <ConfirmDialog

@@ -120,7 +120,7 @@ export function ReviewActions<Status extends string>({
       ) : null}
       {noteError ? (
         <p
-          className="m-0 rounded-panel bg-warning-soft p-[.8rem] text-[.82rem] leading-[1.5] text-warning"
+          className="m-0 rounded-small border border-warning/25 bg-warning-soft p-[.8rem] text-[.82rem] leading-[1.5] text-warning"
           role="alert"
         >
           {noteError}

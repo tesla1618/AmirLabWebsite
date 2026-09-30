@@ -5,11 +5,11 @@ import { loadingPlaceholder } from "@/lib/loading-style";
 export type BadgeTone = "success" | "warning" | "info" | "error" | "neutral";
 
 const toneClass: Record<BadgeTone, string> = {
-  success: "bg-success-soft text-success",
-  warning: "bg-warning-soft text-warning",
-  info: "bg-info-soft text-info",
-  error: "bg-danger-soft text-danger",
-  neutral: "border-line bg-surface text-ink-muted",
+  success: "border-success/25 bg-success-soft text-success",
+  warning: "border-warning/25 bg-warning-soft text-warning",
+  info: "border-info/25 bg-info-soft text-info",
+  error: "border-danger/25 bg-danger-soft text-danger",
+  neutral: "border-line-strong bg-surface text-ink-muted",
 };
 
 const dotClass: Record<BadgeTone, string> = {
@@ -36,7 +36,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-[5px] whitespace-nowrap rounded-panel border border-transparent px-[9px] py-[3px] font-mono text-[11px] font-medium tracking-[.02em]",
+        "inline-flex min-h-6 w-fit items-center gap-[5px] whitespace-nowrap rounded-[var(--radius-small)] border px-2 py-0.5 font-mono text-[10px] font-medium tracking-[.035em]",
         toneClass[tone],
         live && "animate-[badge-pulse_2s_infinite] motion-reduce:animate-none",
         loading && loadingPlaceholder(true, "label"),

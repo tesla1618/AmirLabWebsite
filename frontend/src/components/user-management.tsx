@@ -2,16 +2,28 @@
 
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArchiveRestore, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  ArchiveRestore,
+  Mail,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PaginationControls } from "@/components/pagination-controls";
 import { StatePanel } from "@/components/state-panel";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { ButtonControl, ButtonLink } from "@/components/ui/button-control";
+import { ButtonLink } from "@/components/ui/button-control";
 import { SelectControl } from "@/components/ui/select-control";
 import { InputControl } from "@/components/ui/form-controls";
+import {
+  RowActionMenu,
+  RowActionMenuItem,
+} from "@/components/ui/row-action-menu";
 import { FormField, FormMessage } from "@/components/ui/form-field";
 import type { PaginatedResponse } from "@/lib/types";
 import { useNotifications } from "@/components/notification-provider";
@@ -20,6 +32,11 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import { useReviewIssues } from "@/lib/use-review-issues";
+import {
+  WorkspaceCollection,
+  WorkspaceRow,
+  WorkspaceRuleBand,
+} from "@/components/ui/workspace-surface";
 
 const ROLES = ["MEMBER", "MODERATOR", "ADMIN"] as const;
 const RANKS = [
@@ -253,7 +270,7 @@ export function UserManagement() {
 
       {error && result ? <FormMessage>{error}</FormMessage> : null}
 
-      <div className="grid min-w-0 grid-cols-[minmax(210px,1.5fr)_repeat(4,minmax(120px,.65fr))] items-end gap-[.8rem] rounded-panel border border-line bg-surface p-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
+      <WorkspaceRuleBand contentClassName="grid min-w-0 grid-cols-[minmax(210px,1.5fr)_repeat(4,minmax(120px,.65fr))] items-end gap-[.8rem] px-[var(--workspace-gutter)] py-3.5 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:px-4">
         <FormField
           className="min-w-0"
           htmlFor="account-search"
@@ -349,10 +366,11 @@ export function UserManagement() {
             value={sort}
           />
         </FormField>
-      </div>
+      </WorkspaceRuleBand>
 
       {error && !result ? (
         <StatePanel
+          frame="workspace"
           action={{
             label: "Retry",
             onClick: () => {
@@ -366,28 +384,35 @@ export function UserManagement() {
         />
       ) : !loading && !accounts.length ? (
         <StatePanel
+          frame="workspace"
           body="Create the first member account from the page action above."
           title="No accounts yet"
         />
       ) : (
-        <section className="grid gap-4" data-loading={loading || undefined}>
+        <WorkspaceCollection data-loading={loading || undefined}>
+          <div className="hidden grid-cols-[minmax(190px,1.05fr)_minmax(220px,1fr)_minmax(260px,1.05fr)_40px] items-center gap-4 border-b border-line px-[var(--workspace-gutter)] py-[.62rem] font-mono text-[.56rem] tracking-[.06em] text-ink-muted uppercase min-[701px]:grid">
+            <span>Name</span>
+            <span>Email</span>
+            <span>Access</span>
+            <span className="sr-only">Actions</span>
+          </div>
           {(loading && !accounts.length
-            ? Array.from({ length: 4 }, () => undefined)
+            ? Array.from({ length: 5 }, () => undefined)
             : accounts
           ).map((account, index) => {
             const issue = account
               ? actionIssues.forItem(account.id)[0]
               : undefined;
             return (
-              <article
-                className="relative grid min-w-0 grid-cols-[minmax(220px,4fr)_minmax(260px,5fr)_minmax(360px,3fr)] items-center gap-4 rounded-panel border border-line bg-surface p-4 pr-10 max-[1180px]:grid-cols-1 max-[700px]:grid-cols-1"
+              <WorkspaceRow
+                className="relative grid min-w-0 grid-cols-[minmax(190px,1.05fr)_minmax(220px,1fr)_minmax(260px,1.05fr)_40px] items-center gap-4 py-[.72rem] [overflow-wrap:anywhere] max-[700px]:grid-cols-[minmax(0,1fr)_40px] max-[700px]:gap-x-3 max-[700px]:gap-y-2 max-[700px]:py-3"
                 key={account?.id ?? `account-loading-${index}`}
               >
                 {account ? <ReviewIssueStamp issue={issue} /> : null}
-                <div className="grid min-w-0 gap-[.35rem] [overflow-wrap:anywhere]">
+                <div className="grid min-w-0 gap-[.18rem]">
                   <strong
                     className={cn(
-                      "text-[.95rem] font-semibold leading-[1.35]",
+                      "truncate text-[.82rem] font-medium leading-[1.35]",
                       loadingPlaceholder(loading, "text", "long"),
                     )}
                     data-placeholder="text"
@@ -396,128 +421,149 @@ export function UserManagement() {
                     {account?.person?.fullName ??
                       (loading ? "Loading account" : "Account without profile")}
                   </strong>
-                  <div className="flex flex-wrap items-center gap-[.35rem]">
-                    <Badge loading={loading}>
-                      {account ? readable(account.role) : "member"}
-                    </Badge>
-                    <Badge
-                      dot
-                      loading={loading}
-                      tone={
-                        account
-                          ? accountStatusTone(account.status, account.isDeleted)
-                          : "neutral"
-                      }
-                    >
-                      {account
-                        ? accountStatusLabel(account.status, account.isDeleted)
-                        : "loading"}
-                    </Badge>
-                    {account?.isDeleted ? (
-                      <Badge tone="warning">
-                        {recoveryLabel(account.deletedAt)}
-                      </Badge>
-                    ) : null}
-                    {loading || account?.person?.rank ? (
-                      <Badge loading={loading} tone="info">
-                        {account?.person?.rank
-                          ? readable(account.person.rank)
-                          : "rank"}
-                      </Badge>
-                    ) : null}
-                    {issue ? (
-                      <SemanticStatus
-                        loading={loading}
-                        tone={issue.tone ?? "error"}
-                      >
-                        {issue.message}
-                      </SemanticStatus>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="grid min-w-0 gap-[.35rem]">
-                  <span className="text-[.68rem] text-ink-muted">
-                    Account email
+                  <span
+                    className={cn(
+                      "hidden truncate font-mono text-[.56rem] text-ink-faint max-[700px]:block",
+                      loadingPlaceholder(loading, "label", "medium"),
+                    )}
+                    data-placeholder={loading ? "label" : undefined}
+                  >
+                    {account?.person?.rank
+                      ? readable(account.person.rank)
+                      : "No research rank"}
                   </span>
+                </div>
+
+                <div className="min-w-0 max-[700px]:col-start-1 max-[700px]:row-start-2">
                   {loading ? (
-                    <strong
+                    <span
                       className={cn(
-                        "text-[.82rem] font-semibold [overflow-wrap:anywhere]",
+                        "block text-[.76rem]",
                         loadingPlaceholder(true, "text", "long"),
                       )}
                       data-placeholder="text"
                       data-placeholder-width="long"
                     >
                       loading@example.org
-                    </strong>
+                    </span>
                   ) : account?.email ? (
-                    <strong className="text-[.82rem] font-semibold [overflow-wrap:anywhere]">
+                    <span className="block truncate text-[.76rem] text-ink-muted">
                       {account.email}
-                    </strong>
+                    </span>
                   ) : (
                     <SemanticStatus loading={loading} tone="warning">
-                      Not provided
+                      Email not provided
                     </SemanticStatus>
                   )}
                 </div>
-                <div className="flex min-w-0 w-full flex-wrap items-center justify-start gap-2 max-[700px]:grid max-[700px]:grid-cols-1">
+
+                <div className="flex min-w-0 flex-wrap items-center gap-[.32rem] max-[700px]:col-start-1 max-[700px]:row-start-3">
+                  <Badge loading={loading}>
+                    {account ? readable(account.role) : "member"}
+                  </Badge>
+                  <Badge
+                    dot
+                    loading={loading}
+                    tone={
+                      account
+                        ? accountStatusTone(account.status, account.isDeleted)
+                        : "neutral"
+                    }
+                  >
+                    {account
+                      ? accountStatusLabel(account.status, account.isDeleted)
+                      : "loading"}
+                  </Badge>
+                  {loading || account?.person?.rank ? (
+                    <span className="max-[700px]:hidden">
+                      <Badge loading={loading} tone="info">
+                        {account?.person?.rank
+                          ? readable(account.person.rank)
+                          : "rank"}
+                      </Badge>
+                    </span>
+                  ) : null}
                   {account?.isDeleted ? (
-                    <ButtonControl
-                      disabled={!account}
-                      loading={loading || activeId === account?.id}
-                      onClick={() => account && void restoreAccount(account.id)}
-                      variant="secondary"
-                    >
-                      <ArchiveRestore size={15} /> Restore
-                    </ButtonControl>
-                  ) : (
-                    <>
-                      <ButtonLink
-                        href={
-                          account ? `/workspace/users/${account.id}/edit` : "#"
-                        }
-                        loading={loading || !account}
-                        variant="secondary"
-                      >
-                        <Pencil aria-hidden="true" size={15} /> Edit
-                      </ButtonLink>
-                      <ButtonControl
-                        disabled={!account}
-                        loading={loading}
-                        onClick={() => account && setDeletePending(account.id)}
-                        variant="danger"
-                      >
-                        <Trash2 size={15} /> Delete
-                      </ButtonControl>
-                    </>
-                  )}
-                  {loading || account?.status === "PENDING_SETUP" ? (
-                    <ButtonControl
-                      disabled={
-                        !account || activeId === account?.id || !account?.email
-                      }
+                    <Badge tone="warning">
+                      {recoveryLabel(account.deletedAt)}
+                    </Badge>
+                  ) : null}
+                  {issue ? (
+                    <SemanticStatus
                       loading={loading}
-                      onClick={() => account && setPendingAccess(account)}
-                      variant="primary"
+                      tone={issue.tone ?? "error"}
                     >
-                      {account?.setupEmailQueuedAt
-                        ? "Resend access email"
-                        : "Send access email"}
-                    </ButtonControl>
+                      {issue.message}
+                    </SemanticStatus>
+                  ) : null}
+                  {!loading &&
+                  account?.status === "PENDING_SETUP" &&
+                  account.setupEmailQueuedAt ? (
+                    <span className="basis-full font-mono text-[.54rem] text-ink-faint">
+                      Access queued{" "}
+                      {new Date(account.setupEmailQueuedAt).toLocaleString()}
+                    </span>
                   ) : null}
                 </div>
-                {!loading &&
-                account?.status === "PENDING_SETUP" &&
-                account.setupEmailQueuedAt ? (
-                  <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
-                    Last queued{" "}
-                    {new Date(account.setupEmailQueuedAt).toLocaleString()}
-                  </p>
-                ) : null}
-              </article>
+
+                <div className="flex justify-end max-[700px]:col-start-2 max-[700px]:row-span-3 max-[700px]:row-start-1 max-[700px]:self-start">
+                  <RowActionMenu
+                    disabled={loading || !account || activeId === account?.id}
+                    label={
+                      account?.person?.fullName
+                        ? `Actions for ${account.person.fullName}`
+                        : "Account actions"
+                    }
+                  >
+                    {account?.isDeleted ? (
+                      <RowActionMenuItem
+                        onSelect={() => void restoreAccount(account.id)}
+                      >
+                        <ArchiveRestore aria-hidden="true" size={15} />
+                        Restore account
+                      </RowActionMenuItem>
+                    ) : (
+                      <>
+                        {account?.status === "PENDING_SETUP" ? (
+                          <RowActionMenuItem
+                            disabled={!account.email}
+                            onSelect={() => setPendingAccess(account)}
+                          >
+                            <Mail aria-hidden="true" size={15} />
+                            {account.setupEmailQueuedAt
+                              ? "Resend access email"
+                              : "Send access email"}
+                          </RowActionMenuItem>
+                        ) : null}
+                        <RowActionMenuItem asChild>
+                          <Link
+                            href={
+                              account
+                                ? `/workspace/users/${account.id}/edit`
+                                : "#"
+                            }
+                          >
+                            <Pencil aria-hidden="true" size={15} />
+                            Edit account
+                          </Link>
+                        </RowActionMenuItem>
+                        <RowActionMenuItem
+                          danger
+                          onSelect={() =>
+                            account && setDeletePending(account.id)
+                          }
+                        >
+                          <Trash2 aria-hidden="true" size={15} />
+                          Delete account
+                        </RowActionMenuItem>
+                      </>
+                    )}
+                  </RowActionMenu>
+                </div>
+              </WorkspaceRow>
             );
           })}
-        </section>
+        </WorkspaceCollection>
       )}
       {loading || result ? (
         <PaginationControls
@@ -526,9 +572,9 @@ export function UserManagement() {
             beginRefresh();
             setPage(nextPage);
           }}
-          page={result?.page ?? page}
+          page={page}
           pageSize={result?.pageSize ?? 20}
-          total={result?.total ?? 0}
+          total={result?.total}
           totalPages={result?.totalPages ?? 1}
         />
       ) : null}

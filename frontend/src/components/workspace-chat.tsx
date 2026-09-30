@@ -498,7 +498,7 @@ export function WorkspaceChat() {
                 onSubmit={submit}
               >
                 {replyTo ? (
-                  <div className="flex items-center gap-[.45rem] rounded-[8px] border-l-[3px] border-brand bg-brand-soft px-[.7rem] py-[.55rem] text-[.72rem] text-ink-muted">
+                  <div className="flex items-center gap-[.45rem] rounded-control border-l-[3px] border-brand bg-brand-soft px-[.7rem] py-[.55rem] text-[.72rem] text-ink-muted">
                     <Reply size={14} />
                     <span>
                       Replying to{" "}
@@ -529,7 +529,7 @@ export function WorkspaceChat() {
                   <TextareaControl
                     loading={loading}
                     aria-label="Message"
-                    className="min-h-[42px] max-h-[140px] flex-1 resize-none rounded-[999px] bg-canvas px-4 py-[.7rem] [field-sizing:content]"
+                    className="min-h-[42px] max-h-[140px] flex-1 resize-none rounded-control bg-canvas px-4 py-[.7rem] [field-sizing:content]"
                     disabled={loading || sending}
                     onChange={(event) => updateTyping(event.target.value)}
                     onKeyDown={(event) => {
@@ -553,7 +553,7 @@ export function WorkspaceChat() {
                   </IconButton>
                   <ButtonControl
                     aria-label="Send message"
-                    className="h-10 min-h-10 w-10 min-w-10 rounded-full p-0"
+                    className="h-10 min-h-10 w-10 min-w-10 rounded-control p-0"
                     disabled={!draft.trim() || sending}
                     loading={loading}
                     type="submit"
@@ -667,7 +667,7 @@ function ConversationRow({
 function SystemMessage({ message }: { message: CollaborationMessage }) {
   return (
     <div className="mx-auto my-[.8rem] flex max-w-[80%] items-center justify-center gap-[.45rem] text-center text-[.72rem] text-ink-muted">
-      <span className="rounded-[999px] border border-line bg-[color-mix(in_srgb,var(--surface)_84%,transparent)] px-[.7rem] py-[.4rem]">
+      <span className="rounded-small border border-line bg-[color-mix(in_srgb,var(--surface)_84%,transparent)] px-[.7rem] py-[.4rem]">
         {message.body}
       </span>
       <time className="font-mono text-[.58rem] text-ink-faint">
@@ -749,7 +749,7 @@ function MessageBubble({
             {message?.replyTo ? (
               <div
                 className={cn(
-                  "mb-[2px] flex max-w-full items-start gap-[.35rem] rounded-[10px_10px_4px_4px] border-l-[3px] border-brand bg-[color-mix(in_srgb,var(--ink)_7%,var(--surface))] px-[.58rem] py-[.42rem] text-[.68rem] leading-[1.3] text-ink-muted",
+                  "mb-[2px] flex max-w-full items-start gap-[.35rem] rounded-control border-l-[3px] border-brand bg-[color-mix(in_srgb,var(--ink)_7%,var(--surface))] px-[.58rem] py-[.42rem] text-[.68rem] leading-[1.3] text-ink-muted",
                   mine &&
                     "border-l-[color-mix(in_srgb,var(--on-accent)_68%,transparent)] bg-[color-mix(in_srgb,var(--brand)_77%,var(--surface))] text-[color-mix(in_srgb,var(--on-accent)_82%,transparent)]",
                 )}
@@ -770,25 +770,13 @@ function MessageBubble({
                   "m-0 whitespace-pre-wrap border border-[color-mix(in_srgb,var(--line)_72%,transparent)] bg-surface px-[.8rem] py-[.58rem] leading-[1.42] shadow-[0_1px_1px_color-mix(in_srgb,var(--ink)_4%,transparent)] [overflow-wrap:anywhere]",
                   mine && "border-brand bg-brand text-on-accent",
                   !mine && position === "group-single" && "rounded-panel",
-                  !mine &&
-                    position === "group-first" &&
-                    "rounded-[16px_16px_16px_6px]",
-                  !mine &&
-                    position === "group-middle" &&
-                    "rounded-[6px_16px_16px_6px]",
-                  !mine &&
-                    position === "group-last" &&
-                    "rounded-[6px_16px_16px_16px]",
+                  !mine && position === "group-first" && "rounded-control",
+                  !mine && position === "group-middle" && "rounded-control",
+                  !mine && position === "group-last" && "rounded-control",
                   mine && position === "group-single" && "rounded-panel",
-                  mine &&
-                    position === "group-first" &&
-                    "rounded-[16px_16px_6px_16px]",
-                  mine &&
-                    position === "group-middle" &&
-                    "rounded-[16px_6px_6px_16px]",
-                  mine &&
-                    position === "group-last" &&
-                    "rounded-[16px_6px_16px_16px]",
+                  mine && position === "group-first" && "rounded-control",
+                  mine && position === "group-middle" && "rounded-control",
+                  mine && position === "group-last" && "rounded-control",
                 ),
                 loadingPlaceholder(loading, "text", "full"),
               )}
@@ -807,7 +795,7 @@ function MessageBubble({
               >
                 {reactions.map((emoji, index) => (
                   <span
-                    className="rounded-[999px] border border-line bg-surface px-[.35rem] py-[.15rem] text-[.75rem]"
+                    className="rounded-small border border-line bg-surface px-[.35rem] py-[.15rem] text-[.75rem]"
                     key={`${emoji}-${index}`}
                   >
                     {emoji}

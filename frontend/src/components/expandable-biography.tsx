@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
@@ -17,16 +17,14 @@ export function ExpandableBiography({
   if (!value) return null;
   const long = !loading && value.length > 520;
   return (
-    <div
-      className="mt-8 max-w-[760px] border-l-2 border-brand pl-6"
-      data-loading={loading || undefined}
-    >
+    <div className="mt-6 max-w-[760px]" data-loading={loading || undefined}>
       <p
         className={cn(
-          "m-0 whitespace-pre-line text-[1.02rem] leading-[1.7] text-ink-muted",
+          "m-0 whitespace-pre-line text-[.92rem] leading-[1.65] text-ink-muted",
           long && !expanded && "line-clamp-7",
           loading && loadingPlaceholder(true, "text"),
         )}
+        aria-hidden={loading || undefined}
         data-placeholder={loading ? "text" : undefined}
       >
         {value}
@@ -39,7 +37,11 @@ export function ExpandableBiography({
           type="button"
         >
           {expanded ? "Show less" : "Read full biography"}
-          <ChevronDown aria-hidden="true" size={15} />
+          {expanded ? (
+            <ArrowUp aria-hidden="true" size={15} />
+          ) : (
+            <ArrowDown aria-hidden="true" size={15} />
+          )}
         </button>
       ) : null}
     </div>

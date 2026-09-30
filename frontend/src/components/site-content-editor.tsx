@@ -105,7 +105,7 @@ export function SiteContentEditor({ page }: { page: SiteContentPage }) {
   }
 
   return (
-    <div className="grid w-full max-w-[1240px] gap-4">
+    <div className="grid w-full gap-4">
       <Link
         className="inline-flex items-center gap-[.4rem] justify-self-start text-[.74rem] text-ink-muted hover:text-brand"
         href="/workspace/content"
@@ -133,7 +133,7 @@ export function SiteContentEditor({ page }: { page: SiteContentPage }) {
           data-loading={loading || undefined}
           onSubmit={submit}
         >
-          <header className="flex items-center justify-between gap-8 rounded-panel border border-line bg-surface p-[clamp(1.25rem,2.5vw,1.75rem)] max-[760px]:flex-col max-[760px]:items-start max-[760px]:gap-[.7rem]">
+          <header className="frame-rail-section flex items-center justify-between gap-8 py-[clamp(1.25rem,2.5vw,1.75rem)] max-[760px]:flex-col max-[760px]:items-start max-[760px]:gap-[.7rem]">
             <div>
               <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
                 Public content
@@ -149,7 +149,7 @@ export function SiteContentEditor({ page }: { page: SiteContentPage }) {
             </div>
             <span
               className={cn(
-                "whitespace-nowrap rounded-full bg-surface-subtle px-3 py-2 text-[.7rem] text-ink-muted",
+                "whitespace-nowrap rounded-small border border-line bg-surface-subtle px-3 py-2 font-mono text-[.62rem] text-ink-muted",
                 loadingPlaceholder(loading, "label", "medium"),
               )}
               data-placeholder={loading ? "label" : undefined}
@@ -415,7 +415,7 @@ function AboutFields({
               />
               {content.focusAreas.length > 2 ? (
                 <ButtonControl
-                  className="h-10 min-h-10 w-10 rounded-full bg-surface p-0 text-ink-muted hover:border-danger hover:bg-surface hover:text-danger"
+                  className="h-10 min-h-10 w-10 rounded-control bg-surface p-0 text-ink-muted hover:border-danger hover:bg-danger-soft hover:text-danger"
                   aria-label={`Remove focus area ${index + 1}`}
                   loading={loading}
                   onClick={() =>
@@ -496,7 +496,7 @@ function AboutFields({
               />
               {content.facts.length > 2 ? (
                 <ButtonControl
-                  className="h-10 min-h-10 w-10 rounded-full bg-surface p-0 text-ink-muted hover:border-danger hover:bg-surface hover:text-danger max-[760px]:col-start-3 max-[760px]:row-start-1"
+                  className="h-10 min-h-10 w-10 rounded-control bg-surface p-0 text-ink-muted hover:border-danger hover:bg-danger-soft hover:text-danger max-[760px]:col-start-3 max-[760px]:row-start-1"
                   aria-label={`Remove fact ${index + 1}`}
                   loading={loading}
                   onClick={() =>
@@ -563,7 +563,7 @@ function EditorSection({
   title: string;
 }) {
   return (
-    <section className="grid gap-5 rounded-panel border border-line bg-surface p-[clamp(1.25rem,2.5vw,1.75rem)]">
+    <section className="frame-rail-section grid gap-5 py-[clamp(1.25rem,2.5vw,1.75rem)]">
       <header className="border-b border-line pb-4">
         <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
           {eyebrow}

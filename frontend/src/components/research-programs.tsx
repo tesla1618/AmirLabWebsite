@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { StatePanel } from "@/components/state-panel";
+import { WorkspacePageShell } from "@/components/workspace-page-shell";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { ButtonControl } from "@/components/ui/button-control";
 import { CheckboxControl } from "@/components/ui/checkbox-control";
@@ -27,12 +28,10 @@ import {
 import { SelectControl } from "@/components/ui/select-control";
 import {
   WorkspaceEmpty,
-  WorkspaceHero,
   WorkspaceMetric,
   WorkspaceMetricStrip,
   WorkspacePanel,
   WorkspaceSplit,
-  WorkspaceSurface,
 } from "@/components/ui/workspace-surface";
 import { apiRequest } from "@/lib/client-api";
 import {
@@ -191,190 +190,187 @@ export function ResearchPrograms() {
 
   const loading = authLoading || !programs;
   return (
-    <WorkspaceSurface measure="reading">
-      <WorkspaceHero
-        action={
-          admin ? (
-            <ButtonControl onClick={startProgram} variant="primary">
-              <Plus aria-hidden="true" size={16} /> New program
-            </ButtonControl>
-          ) : undefined
-        }
-        description="Organize long-running research directions without turning them into duplicate projects. Programs connect departments, projects, and outputs around one institutional objective."
-        eyebrow="Research · portfolio"
-        meta={
-          <span>
-            {loading
-              ? "Program registry"
-              : `${programs.length} current program${programs.length === 1 ? "" : "s"}`}
-          </span>
-        }
-        title="Research programs"
-      />
+    <WorkspacePageShell
+      action={
+        admin ? (
+          <ButtonControl onClick={startProgram} variant="primary">
+            <Plus aria-hidden="true" size={16} /> New program
+          </ButtonControl>
+        ) : undefined
+      }
+      description={
+        loading
+          ? "Long-running research portfolios and institutional objectives"
+          : `${programs.length} current program${programs.length === 1 ? "" : "s"} · linked projects, outputs, and departments`
+      }
+    >
+      <div className="grid gap-[1.5rem] max-[640px]:gap-[.9rem]">
+        {error ? (
+          <StatePanel
+            action={
+              !programs
+                ? {
+                    label: "Try again",
+                    onClick: () => setReload((value) => value + 1),
+                  }
+                : undefined
+            }
+            body={error}
+            title={
+              programs
+                ? "Program not saved"
+                : "Could not load research programs"
+            }
+            variant="error"
+          />
+        ) : null}
 
-      {error ? (
-        <StatePanel
-          action={
-            !programs
-              ? {
-                  label: "Try again",
-                  onClick: () => setReload((value) => value + 1),
-                }
-              : undefined
-          }
-          body={error}
-          title={
-            programs ? "Program not saved" : "Could not load research programs"
-          }
-          variant="error"
-        />
-      ) : null}
+        <WorkspaceMetricStrip>
+          <WorkspaceMetric
+            detail="currently moving"
+            label="Active programs"
+            loading={loading}
+            tone="brand"
+            value={loading ? "0" : activeCount}
+          />
+          <WorkspaceMetric
+            detail="canonical project records"
+            label="Linked projects"
+            loading={loading}
+            value={loading ? "0" : projectCount}
+          />
+          <WorkspaceMetric
+            detail="papers and datasets"
+            label="Linked outputs"
+            loading={loading}
+            tone="success"
+            value={loading ? "0" : outputCount}
+          />
+          <WorkspaceMetric
+            detail="participating lab units"
+            label="Departments"
+            loading={loading}
+            value={loading ? "0" : departmentCount}
+          />
+        </WorkspaceMetricStrip>
 
-      <WorkspaceMetricStrip>
-        <WorkspaceMetric
-          detail="currently moving"
-          label="Active programs"
-          loading={loading}
-          tone="brand"
-          value={loading ? "0" : activeCount}
-        />
-        <WorkspaceMetric
-          detail="canonical project records"
-          label="Linked projects"
-          loading={loading}
-          value={loading ? "0" : projectCount}
-        />
-        <WorkspaceMetric
-          detail="papers and datasets"
-          label="Linked outputs"
-          loading={loading}
-          tone="success"
-          value={loading ? "0" : outputCount}
-        />
-        <WorkspaceMetric
-          detail="participating lab units"
-          label="Departments"
-          loading={loading}
-          value={loading ? "0" : departmentCount}
-        />
-      </WorkspaceMetricStrip>
-
-      <WorkspaceSplit>
-        <WorkspacePanel
-          action={
-            loading ? null : creating ? (
-              <Badge tone="neutral">New</Badge>
-            ) : selected ? (
-              <Badge tone={statusTone(selected.status)}>
-                {researchProgramStatusLabel(selected.status)}
-              </Badge>
-            ) : null
-          }
-          description={
-            admin
-              ? "Keep the program identity stable while its projects and outputs evolve."
-              : "Program scope, leadership, participating units, and connected research."
-          }
-          eyebrow="Program record"
-          title={
-            creating
-              ? "Define a program"
-              : (selected?.name ?? "Program details")
-          }
-        >
-          {loading ? (
-            <ProgramEditor
-              disabled
-              form={emptyForm}
-              loading
-              onChange={setForm}
-              onSave={() => undefined}
-              options={options}
-            />
-          ) : admin && (creating || selected) ? (
-            <ProgramEditor
-              disabled={saving}
-              form={form}
-              onChange={setForm}
-              onSave={() => void save()}
-              options={options}
-            />
-          ) : selected ? (
-            <ProgramReadView program={selected} />
-          ) : (
-            <WorkspaceEmpty>
-              No research program is available yet.
-            </WorkspaceEmpty>
-          )}
-        </WorkspacePanel>
-
-        <WorkspacePanel
-          description="Programs are durable research directions; projects remain the units of execution."
-          eyebrow="Portfolio index"
-          title="Current programs"
-        >
-          <div
-            aria-busy={loading}
-            className="grid"
-            data-loading={loading || undefined}
+        <WorkspaceSplit>
+          <WorkspacePanel
+            action={
+              loading ? null : creating ? (
+                <Badge tone="neutral">New</Badge>
+              ) : selected ? (
+                <Badge tone={statusTone(selected.status)}>
+                  {researchProgramStatusLabel(selected.status)}
+                </Badge>
+              ) : null
+            }
+            description={
+              admin
+                ? "Keep the program identity stable while its projects and outputs evolve."
+                : "Program scope, leadership, participating units, and connected research."
+            }
+            eyebrow="Program record"
+            title={
+              creating
+                ? "Define a program"
+                : (selected?.name ?? "Program details")
+            }
           >
-            {(loading ? [undefined, undefined, undefined] : programs).map(
-              (program, index) => (
-                <ButtonControl
-                  aria-pressed={Boolean(
-                    program && !creating && selectedId === program.id,
-                  )}
-                  className="min-h-[78px] w-full justify-between rounded-none border-0 border-b border-line px-5 py-4 text-left hover:bg-brand-faint aria-pressed:bg-brand-faint aria-pressed:text-ink"
-                  disabled={!program}
-                  key={program?.id ?? index}
-                  loading={!program}
-                  onClick={() => program && choose(program)}
-                  variant="secondary"
-                >
-                  <span className="grid min-w-0 gap-1">
-                    <strong
-                      className={cn(
-                        "overflow-hidden text-ellipsis whitespace-nowrap text-[.84rem]",
-                        loadingPlaceholder(!program, "text", "long"),
-                      )}
-                      data-placeholder={!program ? "text" : undefined}
-                      data-placeholder-width="long"
-                    >
-                      {program?.name ?? "Research program"}
-                    </strong>
-                    <small
-                      className={cn(
-                        "text-[.7rem] text-ink-muted",
-                        loadingPlaceholder(!program, "label", "medium"),
-                      )}
-                      data-placeholder={!program ? "label" : undefined}
-                      data-placeholder-width="medium"
-                    >
-                      {program?.lead?.fullName ?? "Program leadership"}
-                    </small>
-                  </span>
-                  <Badge
-                    loading={!program}
-                    tone={program ? statusTone(program.status) : "neutral"}
-                  >
-                    {program
-                      ? researchProgramStatusLabel(program.status)
-                      : "Status"}
-                  </Badge>
-                </ButtonControl>
-              ),
-            )}
-            {!loading && programs.length === 0 ? (
+            {loading ? (
+              <ProgramEditor
+                disabled
+                form={emptyForm}
+                loading
+                onChange={setForm}
+                onSave={() => undefined}
+                options={options}
+              />
+            ) : admin && (creating || selected) ? (
+              <ProgramEditor
+                disabled={saving}
+                form={form}
+                onChange={setForm}
+                onSave={() => void save()}
+                options={options}
+              />
+            ) : selected ? (
+              <ProgramReadView program={selected} />
+            ) : (
               <WorkspaceEmpty>
-                {admin
-                  ? "Create the first research program to connect related work."
-                  : "No current research programs."}
+                No research program is available yet.
               </WorkspaceEmpty>
-            ) : null}
-          </div>
-        </WorkspacePanel>
-      </WorkspaceSplit>
-    </WorkspaceSurface>
+            )}
+          </WorkspacePanel>
+
+          <WorkspacePanel
+            description="Programs are durable research directions; projects remain the units of execution."
+            eyebrow="Portfolio index"
+            title="Current programs"
+          >
+            <div
+              aria-busy={loading}
+              className="grid"
+              data-loading={loading || undefined}
+            >
+              {(loading ? [undefined, undefined, undefined] : programs).map(
+                (program, index) => (
+                  <ButtonControl
+                    aria-pressed={Boolean(
+                      program && !creating && selectedId === program.id,
+                    )}
+                    className="min-h-[78px] w-full justify-between rounded-none border-0 border-b border-line px-5 py-4 text-left hover:bg-surface-subtle aria-pressed:bg-surface-subtle aria-pressed:text-ink"
+                    disabled={!program}
+                    key={program?.id ?? index}
+                    loading={!program}
+                    onClick={() => program && choose(program)}
+                    variant="secondary"
+                  >
+                    <span className="grid min-w-0 gap-1">
+                      <strong
+                        className={cn(
+                          "overflow-hidden text-ellipsis whitespace-nowrap text-[.84rem]",
+                          loadingPlaceholder(!program, "text", "long"),
+                        )}
+                        data-placeholder={!program ? "text" : undefined}
+                        data-placeholder-width="long"
+                      >
+                        {program?.name ?? "Research program"}
+                      </strong>
+                      <small
+                        className={cn(
+                          "text-[.7rem] text-ink-muted",
+                          loadingPlaceholder(!program, "label", "medium"),
+                        )}
+                        data-placeholder={!program ? "label" : undefined}
+                        data-placeholder-width="medium"
+                      >
+                        {program?.lead?.fullName ?? "Program leadership"}
+                      </small>
+                    </span>
+                    <Badge
+                      loading={!program}
+                      tone={program ? statusTone(program.status) : "neutral"}
+                    >
+                      {program
+                        ? researchProgramStatusLabel(program.status)
+                        : "Status"}
+                    </Badge>
+                  </ButtonControl>
+                ),
+              )}
+              {!loading && programs.length === 0 ? (
+                <WorkspaceEmpty>
+                  {admin
+                    ? "Create the first research program to connect related work."
+                    : "No current research programs."}
+                </WorkspaceEmpty>
+              ) : null}
+            </div>
+          </WorkspacePanel>
+        </WorkspaceSplit>
+      </div>
+    </WorkspacePageShell>
   );
 }
 

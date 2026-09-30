@@ -148,7 +148,7 @@ export function AccountForm({ accountId }: { accountId?: string }) {
     >
       <form
         aria-busy={loading || undefined}
-        className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)] gap-[1.2rem]"
+        className="mx-auto grid w-full max-w-[820px] gap-[1.35rem] border-y border-line-strong bg-transparent p-[clamp(1.25rem,3vw,2rem)] gap-[1.2rem]"
         data-loading={loading || undefined}
         onSubmit={submit}
       >
@@ -156,7 +156,7 @@ export function AccountForm({ accountId }: { accountId?: string }) {
           <p className="m-0 font-mono text-[.62rem] font-semibold uppercase tracking-[.1em] text-brand">
             Account details
           </p>
-          <h2 className="m-0 font-serif text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
+          <h2 className="m-0 font-sans text-[clamp(1.4rem,2.4vw,2rem)] font-normal leading-[1.1]">
             Identity and access
           </h2>
         </header>

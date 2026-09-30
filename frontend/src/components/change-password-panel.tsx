@@ -51,11 +51,8 @@ export function ChangePasswordPanel() {
   }
 
   return (
-    <form
-      className="mx-auto mt-[1.35rem] grid w-full max-w-[1180px] grid-cols-[minmax(0,1fr)_320px] items-start gap-[1.35rem] max-[980px]:grid-cols-1"
-      onSubmit={submit}
-    >
-      <section className="col-start-1 grid gap-[1.2rem] rounded-panel border border-line bg-surface p-[1.55rem] shadow-[var(--shadow-panel)] max-[980px]:col-start-1">
+    <form className="mt-[1.35rem] w-full" onSubmit={submit}>
+      <section className="grid gap-[1.2rem] border-y border-line-strong bg-transparent p-[1.55rem]">
         <div className="mb-0 flex items-end justify-between gap-8 border-b border-line pb-[.95rem]">
           <div>
             <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">

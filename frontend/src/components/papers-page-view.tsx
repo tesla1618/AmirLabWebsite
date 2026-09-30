@@ -1,4 +1,4 @@
-import { IntroRegister, PageIntro } from "@/components/page-intro";
+import { PageIntro } from "@/components/page-intro";
 import { PublicationExplorer } from "@/components/publication-explorer";
 import type { ResearchItem } from "@/lib/types";
 
@@ -20,23 +20,15 @@ export function PapersPageView({
   return (
     <div>
       <PageIntro
-        aside={
-          <IntroRegister
-            loading={loading}
-            items={[
-              { label: "Publications", value: loading ? "00" : list.length },
-              { label: "Coverage", value: loading ? "0000-0000" : coverage },
-              { label: "Links", value: "DOI / source" },
-              { label: "Types", value: "Journal / conference" },
-            ]}
-            title="Publication overview"
-          />
-        }
+        scene="paper"
+        loading={loading}
         eyebrow="Publications"
         meta={
           <>
+            <span>{list.length} publications</span>
+            <span>{coverage} coverage</span>
             <span>Journal · Conference · Book chapter</span>
-            <span>DOI and source links where available</span>
+            <span>DOI and source links</span>
           </>
         }
         title="Publications"

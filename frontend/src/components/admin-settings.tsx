@@ -232,7 +232,7 @@ export function AdminSettings() {
   return (
     <AdminOnly>
       <div
-        className="mx-auto grid w-full max-w-[1540px] gap-8"
+        className="grid w-full gap-8"
         data-loading={loading || undefined}
       >
         {message ? (
@@ -261,7 +261,7 @@ export function AdminSettings() {
           />
         ) : (
           <>
-            <section className="grid gap-[1.1rem]">
+            <section className="frame-rail-section grid gap-[1.1rem] py-5">
               <header className="grid grid-cols-[42px_minmax(0,1fr)] items-start gap-[1.2rem] border-b border-line pb-4 max-[640px]:grid-cols-1">
                 <span className="pt-[.35rem] font-mono text-[.62rem] text-ink-faint">
                   01
@@ -270,7 +270,7 @@ export function AdminSettings() {
                   <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
                     Review gates
                   </p>
-                  <h2 className="mt-[.35rem] font-serif text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
+                  <h2 className="mt-[.35rem] font-sans text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
                     Content verification
                   </h2>
                   <p className="mt-[.7rem] max-w-[680px] text-[.78rem] leading-[1.55] text-ink-muted">
@@ -280,7 +280,7 @@ export function AdminSettings() {
                 </div>
               </header>
 
-              <div className="ml-[calc(42px+1.2rem)] grid overflow-hidden rounded-panel border border-line bg-surface max-[640px]:ml-0">
+              <div className="ml-[calc(42px+1.2rem)] grid overflow-hidden border-y border-line-strong bg-transparent max-[640px]:ml-0">
                 {(Object.keys(LABELS) as Array<keyof VerificationPolicy>).map(
                   (key) => {
                     const manual = displayedVerification[key] === "MANUAL";
@@ -327,7 +327,7 @@ export function AdminSettings() {
               </div>
             </section>
 
-            <section className="grid gap-[1.1rem]">
+            <section className="frame-rail-section grid gap-[1.1rem] py-5">
               <header className="grid grid-cols-[42px_minmax(0,1fr)] items-start gap-[1.2rem] border-b border-line pb-4 max-[640px]:grid-cols-1">
                 <span className="pt-[.35rem] font-mono text-[.62rem] text-ink-faint">
                   02
@@ -336,7 +336,7 @@ export function AdminSettings() {
                   <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
                     Public ordering
                   </p>
-                  <h2 className="mt-[.35rem] font-serif text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
+                  <h2 className="mt-[.35rem] font-sans text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
                     Research rank thresholds
                   </h2>
                   <p className="mt-[.7rem] max-w-[680px] text-[.78rem] leading-[1.55] text-ink-muted">
@@ -346,7 +346,7 @@ export function AdminSettings() {
                 </div>
               </header>
 
-              <div className="ml-[calc(42px+1.2rem)] grid gap-4 rounded-panel border border-line bg-surface p-4 max-[640px]:ml-0">
+              <div className="ml-[calc(42px+1.2rem)] grid gap-4 border-y border-line-strong bg-transparent p-4 max-[640px]:ml-0">
                 <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-[.8rem] rounded-panel bg-brand-faint p-4">
                   <ShieldCheck className="text-brand" size={22} />
                   <div>
@@ -443,7 +443,7 @@ export function AdminSettings() {
               </div>
             </section>
 
-            <section className="grid gap-[1.1rem]">
+            <section className="frame-rail-section grid gap-[1.1rem] py-5">
               <header className="grid grid-cols-[42px_minmax(0,1fr)] items-start gap-[1.2rem] border-b border-line pb-4 max-[640px]:grid-cols-1">
                 <span className="pt-[.35rem] font-mono text-[.62rem] text-ink-faint">
                   03
@@ -452,7 +452,7 @@ export function AdminSettings() {
                   <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
                     Delivery rules
                   </p>
-                  <h2 className="mt-[.35rem] font-serif text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
+                  <h2 className="mt-[.35rem] font-sans text-[clamp(1.75rem,3vw,2.6rem)] font-normal leading-none">
                     Email and notifications
                   </h2>
                   <p className="mt-[.7rem] max-w-[760px] text-[.78rem] leading-[1.55] text-ink-muted">
@@ -461,7 +461,7 @@ export function AdminSettings() {
                   </p>
                 </div>
               </header>
-              <div className="ml-[calc(42px+1.2rem)] grid overflow-hidden rounded-panel border border-line bg-surface max-[640px]:ml-0">
+              <div className="ml-[calc(42px+1.2rem)] grid overflow-hidden border-y border-line-strong bg-transparent max-[640px]:ml-0">
                 {(
                   Object.keys(NOTIFICATION_LABELS) as Array<
                     Exclude<keyof NotificationPolicy, "reminderDays">
@@ -523,7 +523,7 @@ export function AdminSettings() {
               </div>
             </section>
 
-            <footer className="flex items-center justify-between gap-4 border-t border-line pt-5 max-[640px]:flex-col max-[640px]:items-stretch">
+            <footer className="frame-rail-section flex items-center justify-between gap-4 py-5 max-[640px]:flex-col max-[640px]:items-stretch">
               <p className="m-0 text-[.72rem] leading-[1.5] text-ink-muted">
                 Scholar profiles sync daily with gradual scheduling, backoff,
                 and last-known citation totals.

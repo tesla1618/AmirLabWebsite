@@ -145,18 +145,37 @@
     "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-serif: Fraunces, Charter, "Iowan Old Style", Georgia, serif;
   --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  --radius-control: 3px;
+  --radius-control: 4px;
+  --radius-field: var(--radius-control);
+  --radius-checkbox: 4px;
   --radius-small: 2px;
-  --radius-panel: 4px;
-  --radius-dialog: 6px;
-  --control-height: 42px;
+  --radius-panel: 5px;
+  --radius-dialog: 9px;
+  --control-height: 40px;
+  --control-text-size: 13px;
   --workspace-gutter: clamp(1rem, 2.1vw, 2rem);
-  --workspace-wide: 1400px;
-  --workspace-reading: 1280px;
-  --workspace-form: 900px;
+  --workspace-wide: 1080px;
+  --workspace-reading: 1080px;
+  --workspace-form: 820px;
   --public-wide: 1400px;
   --public-reading: 1180px;
-  --public-rail: 286px;
+  --frame-mobile-outer: 4px;
+  --frame-mobile-inner: 18px;
+  --frame-mobile-band: 14px;
+  --frame-grid-size: 7px;
+  --frame-grid-color: color-mix(in srgb, var(--brand) 13%, transparent);
+  --frame-hatch-color: color-mix(in srgb, var(--line-strong) 38%, transparent);
+  --frame-line: var(--line-strong);
+  --frame-line-soft: color-mix(in srgb, var(--line-strong) 55%, transparent);
+  --frame-dash: 4px;
+  --frame-band: 14px;
+  --frame-node-size: 7px;
+  /* Centres a node on a 1px line drawn at an element edge. */
+  --frame-node-offset: calc(0.5px - var(--frame-node-size) / 2);
+  --frame-side: 3rem;
+  --frame-node-surface: var(--canvas);
+  --frame-pattern-color: color-mix(in srgb, var(--brand) 16%, transparent);
+  --frame-pattern-gap: 12px;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -169,10 +188,116 @@
   --space-16: 4rem;
   --shadow-panel: none;
   --shadow-float: 0 18px 48px rgb(18 29 56 / 12%);
-  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--brand) 24%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 24%, transparent);
   --selection: color-mix(in srgb, var(--brand) 18%, var(--surface));
   --motion-fast: 140ms;
   --motion-standard: 200ms;
+}
+
+body:has([data-site="public"]),
+[data-site="public"],
+body:has([data-site="workspace"]),
+[data-site="workspace"] {
+  color-scheme: light;
+  --canvas: #f7f8f6;
+  --paper: #fff;
+  --surface: #fff;
+  --surface-subtle: #f1f3f1;
+  --surface-raised: #f1f3f1;
+  --ink: #1f2421;
+  --ink-strong: #151a18;
+  --ink-muted: #66716b;
+  --ink-faint: #727a75;
+  --line: #dde2de;
+  --line-strong: #b7c0ba;
+  --brand-soft: #e9effb;
+  --brand-faint: #f2f5fc;
+  --link-soft: #e9effb;
+  --signal-soft: #e9effb;
+  --public-wide: 1240px;
+  --public-gutter: clamp(1rem, 3.2vw, 3rem);
+  /* Frame rails, measured from the page edge. The inner rail is the content
+     box edge (publicShellClass); the outer rail keeps at least one band of
+     bay between them. Percentages resolve against the full-width element. */
+  --frame-wide: var(--public-wide);
+  --frame-inner: max(
+    var(--frame-mobile-inner),
+    calc((100% - var(--frame-wide)) / 2)
+  );
+  --frame-outer: clamp(
+    var(--frame-mobile-outer),
+    calc(var(--frame-inner) - var(--frame-band)),
+    var(--frame-side)
+  );
+  --radius-control: 4px;
+  --radius-field: var(--radius-control);
+  --radius-checkbox: 4px;
+  --radius-panel: 5px;
+  --radius-dialog: 9px;
+  --control-height: 40px;
+  --control-text-size: 13px;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 24%, transparent);
+}
+
+[data-site="public"] {
+  overflow-x: clip;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+[data-site="workspace"] {
+  overflow-x: clip;
+  background: var(--canvas);
+  color: var(--ink);
+  --radius-panel: 0px;
+  --control-height: 36px;
+  --control-text-size: 12px;
+  --workspace-gutter: clamp(1rem, 1.8vw, 1.7rem);
+  --frame-wide: var(--workspace-wide);
+  /* Quiet frame: no outer rail, bays run from the column edge to the rails. */
+  --frame-outer: 0px;
+}
+
+/* Tablet: the content box still fills the page, but the bays get room. */
+@media (min-width: 641px) {
+  [data-site="public"],
+  [data-site="workspace"] {
+    --frame-mobile-outer: 0.75rem;
+    --frame-mobile-inner: 2.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-site="public"] {
+    --public-gutter: 1.125rem;
+  }
+
+  [data-site="workspace"] {
+    --workspace-gutter: 1.125rem;
+  }
+}
+
+[data-site="public"] .font-serif {
+  font-family: var(--font-sans);
+}
+
+[data-site="public"] input[type="search"] {
+  appearance: none;
+}
+
+[data-site="public"] input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+[data-site="public"] main {
+  container-type: inline-size;
+}
+
+[data-loading] [data-placeholder],
+[data-loading][data-placeholder],
+[data-loading] [data-placeholder] * {
+  color: transparent !important;
+  text-decoration-color: transparent !important;
 }
 
 @theme inline {
@@ -241,6 +366,16 @@
 @keyframes badge-pulse {
   50% {
     opacity: 0.55;
+  }
+}
+@keyframes sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 @keyframes dialog-enter {
@@ -321,6 +456,10 @@
   :focus-visible {
     outline: none;
   }
+  [data-site="public"] :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
   h1,
   h2,
   h3,
@@ -336,6 +475,136 @@
     html {
       scroll-behavior: auto;
     }
+  }
+}
+
+@layer components {
+  /* A full-width workspace band. Stacked bands share one rule between them. */
+  .frame-rail-section {
+    position: relative;
+    margin-inline: calc(var(--workspace-gutter) * -1);
+    border-top: 1px solid var(--frame-line);
+    padding-inline: var(--workspace-gutter);
+  }
+
+  .frame-rail-section:not(:has(~ .frame-rail-section)) {
+    border-bottom: 1px solid var(--frame-line);
+  }
+}
+
+@layer utilities {
+  /* Intersection node: square with a centre pin. Always paints over lines. */
+  .frame-node {
+    z-index: 30;
+    width: var(--frame-node-size);
+    height: var(--frame-node-size);
+    border: 1px solid var(--frame-line);
+    background:
+      radial-gradient(circle, var(--frame-line) 0 0.75px, transparent 1.25px),
+      var(--frame-node-surface);
+    box-shadow: 0 0 0 1px var(--frame-node-surface);
+    pointer-events: none;
+  }
+
+  /* Line strokes. Size the element (1px wide or tall); the utility draws it. */
+  .frame-stroke-solid-x,
+  .frame-stroke-solid-y {
+    background: var(--frame-line);
+  }
+  .frame-stroke-dashed-x {
+    background: repeating-linear-gradient(
+      to right,
+      var(--frame-line) 0 var(--frame-dash),
+      transparent var(--frame-dash) calc(var(--frame-dash) * 2)
+    );
+  }
+  .frame-stroke-dashed-y {
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--frame-line) 0 var(--frame-dash),
+      transparent var(--frame-dash) calc(var(--frame-dash) * 2)
+    );
+  }
+  .frame-stroke-dotted-x {
+    background: repeating-linear-gradient(
+      to right,
+      var(--frame-line) 0 1px,
+      transparent 1px 4px
+    );
+  }
+  .frame-stroke-dotted-y {
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--frame-line) 0 1px,
+      transparent 1px 4px
+    );
+  }
+  /* Mixed stroke on one line: long dash, gap, dot, gap. */
+  .frame-stroke-mixed-x {
+    background: repeating-linear-gradient(
+      to right,
+      var(--frame-line) 0 8px,
+      transparent 8px 11px,
+      var(--frame-line) 11px 12px,
+      transparent 12px 15px
+    );
+  }
+  .frame-stroke-mixed-y {
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--frame-line) 0 8px,
+      transparent 8px 11px,
+      var(--frame-line) 11px 12px,
+      transparent 12px 15px
+    );
+  }
+
+  /* Fill patterns for bays and bands. */
+  .frame-grid-hatch {
+    background-color: color-mix(in srgb, var(--surface) 97%, var(--brand) 3%);
+    background-image:
+      linear-gradient(to right, var(--frame-grid-color) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--frame-grid-color) 1px, transparent 1px);
+    background-size: var(--frame-grid-size) var(--frame-grid-size);
+  }
+
+  .frame-diagonal-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 7px,
+      var(--frame-hatch-color) 7px 8px
+    );
+  }
+
+  .frame-cross-hatch {
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent 0 7px,
+        var(--frame-hatch-color) 7px 8px
+      ),
+      repeating-linear-gradient(
+        135deg,
+        transparent 0 7px,
+        var(--frame-hatch-color) 7px 8px
+      );
+  }
+
+  /* Drafting-sheet registration marks: a small plus on every grid point.
+     Masked colour fill, so apply to an empty decorative layer only. */
+  .frame-plus-hatch {
+    background-color: var(--frame-pattern-color);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M4 6.5h5M6.5 4v5' stroke='%23000'/%3E%3C/svg%3E")
+      0 0 / var(--frame-pattern-gap) var(--frame-pattern-gap) repeat;
+  }
+
+  .frame-dot-hatch {
+    background-image: radial-gradient(
+      circle,
+      var(--frame-pattern-color) 0 1px,
+      transparent 1.5px
+    );
+    background-size: var(--frame-pattern-gap) var(--frame-pattern-gap);
   }
 }
 

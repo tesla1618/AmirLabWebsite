@@ -24,6 +24,10 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import { useReviewIssues } from "@/lib/use-review-issues";
+import {
+  WorkspaceCollection,
+  WorkspaceRow,
+} from "@/components/ui/workspace-surface";
 
 const POSITION_TYPES = [
   "INTERNSHIP",
@@ -136,22 +140,10 @@ export function PositionAdminList() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[1180px] min-w-0 gap-6">
-      <header className="flex items-end justify-between gap-4 border-b border-line pb-[1.1rem] max-[760px]:flex-col max-[760px]:items-stretch">
-        <div>
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
-            Administration
-          </p>
-          <h2 className="mt-[.35rem] font-serif text-[clamp(1.8rem,3vw,2.4rem)] font-normal leading-none">
-            Job posts
-          </h2>
-        </div>
-        <ButtonLink href="/workspace/positions/new" variant="primary">
-          <Plus aria-hidden="true" size={16} /> Create job post
-        </ButtonLink>
-      </header>
+    <div className="mx-auto grid w-full min-w-0">
       {error && !positions.length && !loading ? (
         <StatePanel
+          frame="workspace"
           action={{
             label: "Retry",
             onClick: () => {
@@ -164,10 +156,7 @@ export function PositionAdminList() {
           variant="error"
         />
       ) : loading || positions.length ? (
-        <div
-          className="grid border-t border-line"
-          data-loading={loading || undefined}
-        >
+        <WorkspaceCollection data-loading={loading || undefined}>
           {(loading && !positions.length
             ? Array.from({ length: 5 }, () => undefined)
             : positions
@@ -176,15 +165,15 @@ export function PositionAdminList() {
               ? actionIssues.forItem(position.id)[0]
               : undefined;
             return (
-              <article
-                className="relative grid grid-cols-[minmax(0,1fr)_130px_auto] items-center gap-4 border-b border-line py-4 pr-9 max-[760px]:grid-cols-1"
+              <WorkspaceRow
+                className="relative grid grid-cols-[minmax(0,1fr)_130px_auto] items-center gap-4 bg-transparent py-[.75rem] max-[760px]:grid-cols-1 max-[760px]:gap-2.5"
                 key={position?.id ?? `position-loading-${index}`}
               >
                 {position ? <ReviewIssueStamp issue={issue} /> : null}
                 <div>
                   <strong
                     className={cn(
-                      "block leading-[1.35]",
+                      "block text-[.84rem] font-medium leading-[1.35]",
                       loadingPlaceholder(loading, "text", "long"),
                     )}
                     data-placeholder="text"
@@ -224,7 +213,9 @@ export function PositionAdminList() {
                   data-placeholder-width="medium"
                 >
                   {position ? (position._count?.applications ?? 0) : 0}{" "}
-                  applications
+                  {(position?._count?.applications ?? 0) === 1
+                    ? "application"
+                    : "applications"}
                 </span>
                 <div className="flex items-center justify-end gap-[.85rem] max-[760px]:justify-start">
                   <SegmentedControl
@@ -266,12 +257,13 @@ export function PositionAdminList() {
                     Edit
                   </ButtonLink>
                 </div>
-              </article>
+              </WorkspaceRow>
             );
           })}
-        </div>
+        </WorkspaceCollection>
       ) : (
         <StatePanel
+          frame="workspace"
           body="Create the first job post, then enable it when it is ready to accept applications."
           title="No job posts yet"
         />
@@ -432,18 +424,18 @@ export function PositionAdminEditor({ id }: { id?: string }) {
   return (
     <>
       <form
-        className="mx-auto grid w-full max-w-[1180px] gap-6 pb-20"
+        className="grid w-full gap-6 pb-20"
         data-loading={editorLoading || undefined}
         onSubmit={submit}
       >
-        <header className="flex items-end justify-between gap-4 border-b border-line pb-[1.1rem] max-[760px]:flex-col max-[760px]:items-stretch">
+        <header className="frame-rail-section flex items-end justify-between gap-4 py-[1.1rem] max-[760px]:flex-col max-[760px]:items-stretch">
           <div>
             <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
               Job posts
             </p>
             <h2
               className={cn(
-                "mt-[.35rem] font-serif text-[clamp(1.8rem,3vw,2.4rem)] font-normal leading-none",
+                "mt-[.35rem] font-sans text-[clamp(1.8rem,3vw,2.4rem)] font-normal leading-none",
                 loadingPlaceholder(editorLoading, "text", "medium"),
               )}
               data-placeholder={editorLoading ? "text" : undefined}
@@ -508,7 +500,7 @@ export function PositionAdminEditor({ id }: { id?: string }) {
             {submitError}
           </p>
         ) : null}
-        <section className="grid gap-6 rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)] shadow-[0_10px_30px_color-mix(in_srgb,var(--ink)_4%,transparent)]">
+        <section className="frame-rail-section grid gap-6 py-[clamp(1.25rem,3vw,2rem)]">
           <div className="grid gap-1 border-b border-line pb-[1.15rem]">
             <h3 className="m-0 text-[clamp(1.35rem,2.5vw,1.8rem)]">
               Role basics
@@ -593,7 +585,7 @@ export function PositionAdminEditor({ id }: { id?: string }) {
             </Field>
           </div>
         </section>
-        <section className="grid gap-6 rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)] shadow-[0_10px_30px_color-mix(in_srgb,var(--ink)_4%,transparent)]">
+        <section className="frame-rail-section grid gap-6 py-[clamp(1.25rem,3vw,2rem)]">
           <div className="grid gap-1 border-b border-line pb-[1.15rem]">
             <h3 className="m-0 text-[clamp(1.35rem,2.5vw,1.8rem)]">Timing</h3>
             <p className="m-0 text-[.78rem] leading-[1.5] text-ink-muted">
@@ -694,7 +686,7 @@ export function PositionAdminEditor({ id }: { id?: string }) {
             </Field>
             {timingError ? (
               <p
-                className="col-span-full m-0 rounded-panel border-l-[3px] border-danger bg-danger-soft px-[.9rem] py-3 text-[.78rem] leading-[1.45] text-danger"
+                className="col-span-full m-0 border border-danger/30 border-l-[3px] border-l-danger bg-danger-soft px-[.9rem] py-3 text-[.78rem] leading-[1.45] text-danger"
                 role="alert"
               >
                 {timingError}
@@ -702,7 +694,7 @@ export function PositionAdminEditor({ id }: { id?: string }) {
             ) : null}
           </div>
         </section>
-        <section className="grid gap-6 rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)] shadow-[0_10px_30px_color-mix(in_srgb,var(--ink)_4%,transparent)]">
+        <section className="frame-rail-section grid gap-6 py-[clamp(1.25rem,3vw,2rem)]">
           <div className="grid gap-1 border-b border-line pb-[1.15rem]">
             <h3 className="m-0 text-[clamp(1.35rem,2.5vw,1.8rem)]">
               Public content
@@ -862,7 +854,7 @@ function ListEditor({
             <button
               aria-label={`Remove ${label.toLowerCase()} ${index + 1}`}
               className={cn(
-                "flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-line bg-transparent text-ink-muted hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-35",
+                "flex h-10 w-10 cursor-pointer items-center justify-center rounded-control border border-line bg-transparent text-ink-muted hover:border-danger hover:bg-danger-soft hover:text-danger disabled:cursor-not-allowed disabled:opacity-35",
                 loadingPlaceholder(loading, "control"),
               )}
               data-placeholder={loading ? "control" : undefined}

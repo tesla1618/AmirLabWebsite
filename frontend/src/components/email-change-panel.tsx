@@ -124,7 +124,7 @@ export function EmailChangePanel() {
   }
 
   return (
-    <section className="mx-auto mt-[1.35rem] grid w-full max-w-[1180px] gap-[1.2rem] rounded-panel border border-line bg-surface p-[1.55rem] shadow-[var(--shadow-panel)]">
+    <section className="mt-[1.35rem] grid w-full gap-[1.2rem] border-y border-line-strong bg-transparent p-[1.55rem]">
       <div className="flex items-end justify-between gap-8 border-b border-line pb-[.95rem]">
         <div>
           <p className="m-0 mb-4 text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">

@@ -2,10 +2,8 @@
 
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
-import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ReviewActions } from "./review-actions";
 import { StatePanel } from "./state-panel";
 import { useAuth } from "./auth-provider";
@@ -118,7 +116,7 @@ function ParsedResume({
             .filter(([, lines]) => Array.isArray(lines) && lines.length)
             .map(([name, lines]) => (
               <section className="border-t border-line py-4" key={name}>
-                <h3 className="font-serif text-base capitalize">{name}</h3>
+                <h3 className="font-sans text-base capitalize">{name}</h3>
                 <ul className="mt-[.7rem] grid gap-[.45rem] pl-[1.2rem] text-[.8rem] leading-[1.5] text-ink-muted">
                   {(lines as unknown[]).map((line, index) => (
                     <li key={index}>{String(line)}</li>
@@ -131,8 +129,17 @@ function ParsedResume({
   );
 }
 
-export function ApplicationReviewDetail({ id }: { id: string }) {
-  const router = useRouter();
+/**
+ * The open application inside the review split. `id` is undefined while the
+ * queue's first load is pending (renders the loading structure).
+ */
+export function ApplicationReviewDetail({
+  id,
+  onDecided,
+}: {
+  id: string | undefined;
+  onDecided: () => void;
+}) {
   const { user } = useAuth();
   const { refreshUnreadCount } = useNotifications();
   const [application, setApplication] = useState<ReviewApplication>();
@@ -142,6 +149,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
   const reviewIssues = useReviewIssues();
 
   useEffect(() => {
+    if (!id) return;
     let active = true;
     void apiRequest<ReviewApplication>(`/applications/${id}`, { method: "GET" })
       .then((item) => {
@@ -175,8 +183,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
       method: "POST",
     });
     void refreshUnreadCount().catch(() => undefined);
-    router.push("/workspace/applications");
-    router.refresh();
+    onDecided();
   }
 
   if (!loading && !application)
@@ -205,13 +212,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
 
   return (
     <div className="grid min-w-0 gap-5" data-loading={loading || undefined}>
-      <Link
-        className="inline-flex w-fit items-center gap-[.4rem] text-[.78rem] text-ink-muted hover:text-brand"
-        href="/workspace/applications"
-      >
-        <ArrowLeft aria-hidden="true" size={15} /> Applications
-      </Link>
-      <header className="relative flex items-start justify-between gap-8 rounded-panel border border-line bg-surface p-6 max-[640px]:flex-col">
+      <header className="relative flex items-start justify-between gap-8 border-b border-line pb-5 @max-[520px]:flex-col">
         {application ? (
           <ReviewIssueStamp issue={reviewIssues.forItem(application.id)[0]} />
         ) : null}
@@ -221,7 +222,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
           </p>
           <h2
             className={cn(
-              "font-serif text-[clamp(1.7rem,2.8vw,2.4rem)] leading-[1.1]",
+              "font-sans text-[clamp(1.7rem,2.8vw,2.4rem)] leading-[1.1]",
               loadingPlaceholder(loading, "text", "long"),
             )}
             data-placeholder="text"
@@ -251,9 +252,9 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
           {status.replaceAll("_", " ").toLowerCase()}
         </Badge>
       </header>
-      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] items-start gap-4 max-[820px]:grid-cols-1">
-        <section className="min-w-0 rounded-panel border border-line bg-surface p-6">
-          <h2 className="mb-5 font-serif text-[1.3rem]">Parsed information</h2>
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(240px,.65fr)] items-start border-b border-line @max-[640px]:grid-cols-1">
+        <section className="min-w-0 py-5 pr-5 @max-[640px]:pr-0">
+          <h2 className="mb-5 font-sans text-[1.3rem]">Parsed information</h2>
           <dl className="m-0 grid gap-0">
             <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-t border-line py-[.8rem]">
               <dt className="text-[.78rem] font-[750] text-ink-muted">Email</dt>
@@ -302,7 +303,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
           <ParsedResume loading={loading} value={application?.parsedResume} />
           {relevantLinks.length ? (
             <div className="grid gap-2 border-t border-line pt-4">
-              <h3 className="font-serif text-base">Relevant links</h3>
+              <h3 className="font-sans text-base">Relevant links</h3>
               {relevantLinks.map((link, index) =>
                 loading ? (
                   <span
@@ -328,9 +329,9 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
             </div>
           ) : null}
         </section>
-        <aside className="min-w-0 rounded-panel border border-line bg-surface p-6">
-          <h2 className="mb-5 font-serif text-[1.3rem]">Original file</h2>
-          <div className="flex flex-col items-center rounded-panel border border-line bg-canvas px-4 py-8 text-center">
+        <aside className="min-w-0 border-l border-line py-5 pl-5 @max-[640px]:border-t @max-[640px]:border-l-0 @max-[640px]:pl-0">
+          <h2 className="mb-5 font-sans text-[1.3rem]">Original file</h2>
+          <div className="flex flex-col items-center border-y border-line-strong bg-canvas px-4 py-8 text-center">
             <FileText
               aria-hidden="true"
               className="mb-[.6rem] text-brand"
@@ -354,7 +355,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
               Open original
             </ButtonAnchor>
           </div>
-          <div className="mt-4 grid gap-2 rounded-panel border border-line bg-canvas p-4">
+          <div className="mt-4 grid gap-2 border-y border-line-strong bg-canvas p-4">
             <span className="font-mono text-[.64rem] uppercase tracking-[.06em] text-ink-muted">
               ATS assessment
             </span>
@@ -440,7 +441,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
         </aside>
       </div>
       {loading || canDecide ? (
-        <div className="sticky bottom-3 z-[5] grid gap-4 rounded-panel border border-line bg-surface p-5">
+        <div className="sticky bottom-0 z-[5] grid gap-4 border-t border-line bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] py-4 backdrop-blur-[12px]">
           <ReviewActions
             loading={loading}
             actions={[
@@ -501,7 +502,7 @@ export function ApplicationReviewDetail({ id }: { id: string }) {
           variant="permission"
         />
       ) : application?.decisionReason ? (
-        <div className="mt-4 rounded-panel border-l-[3px] border-info bg-info-soft p-4">
+        <div className="mt-4 border border-info/30 border-l-[3px] border-l-info bg-info-soft p-4">
           <span className="font-mono text-[.64rem] uppercase tracking-[.06em] text-info">
             Decision note
           </span>

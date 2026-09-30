@@ -53,7 +53,7 @@ export function ReviewIssueStamp({
     <span
       aria-label={issue.message}
       className={cn(
-        "absolute right-2 top-2 z-[2] grid h-7 w-7 place-items-center rounded-full shadow-[0_1px_0_color-mix(in_srgb,var(--ink)_8%,transparent)]",
+        "absolute top-2 right-2 z-[2] grid h-7 w-7 place-items-center rounded-control border border-current/20",
         toneClasses[tone],
         className,
       )}

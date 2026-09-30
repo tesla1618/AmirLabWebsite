@@ -5,6 +5,11 @@ import { ArrowRight, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { StatePanel } from "@/components/state-panel";
 import { TabsControl } from "@/components/ui/tabs-control";
+import {
+  FramedCollection,
+  FramedRow,
+  PublicSection,
+} from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import type { Position } from "@/lib/types";
@@ -37,19 +42,30 @@ export function PositionList({
       );
 
   return (
-    <section
+    <PublicSection
       aria-busy={loading || undefined}
       aria-labelledby="current-opportunities"
-      className="mx-auto w-full max-w-[1280px] px-8 max-[640px]:px-4 grid gap-4 pb-14 pt-8"
+      boundary="bottom"
+      contentClassName="grid gap-4 pt-8 pb-14"
       data-loading={loading || undefined}
     >
-      <div className="flex items-end justify-between border-t border-line-strong pt-[.7rem] max-[640px]:flex-col max-[640px]:items-start">
+      <div className="flex items-end justify-between max-[640px]:flex-col max-[640px]:items-start">
         <div>
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
+          <p
+            aria-hidden={loading || undefined}
+            className={cn(
+              "m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand",
+              loading && loadingPlaceholder(true, "label", "medium"),
+            )}
+          >
             Current opportunities
           </p>
           <h2
-            className="mt-[.1rem] font-serif text-[1.9rem] font-medium tracking-[-.03em]"
+            aria-hidden={loading || undefined}
+            className={cn(
+              "mt-[.1rem] font-sans text-[1.9rem] font-medium tracking-[-.03em]",
+              loading && loadingPlaceholder(true, "text", "medium"),
+            )}
             id="current-opportunities"
           >
             Open roles
@@ -75,10 +91,11 @@ export function PositionList({
         />
       ) : null}
       {visible.length ? (
-        <div className="grid">
+        <FramedCollection className="grid">
           {visible.map((position, index) => (
-            <article
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-[clamp(1rem,2vw,2rem)] border-b border-line py-4 first:border-t max-[640px]:grid-cols-1"
+            <FramedRow
+              as="article"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-[clamp(1rem,2vw,2rem)] px-[var(--public-gutter)] py-4 first:border-t max-[640px]:grid-cols-1"
               key={position?.id ?? `loading-position-${index}`}
             >
               <div className="grid gap-[.55rem]">
@@ -149,16 +166,17 @@ export function PositionList({
                   Apply <ArrowRight aria-hidden="true" size={16} />
                 </Link>
               )}
-            </article>
+            </FramedRow>
           ))}
-        </div>
+        </FramedCollection>
       ) : (
         <StatePanel
           body="New roles will appear here when the lab begins accepting applications."
+          frame
           title="No positions are open right now"
         />
       )}
-    </section>
+    </PublicSection>
   );
 }
 

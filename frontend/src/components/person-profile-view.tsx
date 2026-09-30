@@ -4,7 +4,12 @@ import { ExpandableBiography } from "@/components/expandable-biography";
 import { PersonPortrait } from "@/components/person-portrait";
 import { PersonResearchOutputs } from "@/components/person-research-outputs";
 import { ProfileRecords } from "@/components/profile-records";
-import { PublicShell } from "@/components/ui/public-shell";
+import { Badge } from "@/components/ui/badge";
+import {
+  FrameBays,
+  FrameRule,
+  PublicShell,
+} from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import type { Person } from "@/lib/types";
@@ -27,16 +32,22 @@ export function PersonProfileView({
     .filter(Boolean);
   const visibleRoles = loading ? ["Research role", "Lab appointment"] : roles;
   const records = (person?.profileSections ?? []).map(normalizeProfileSection);
+  const hasResearchOutputs = loading || Boolean(person?.contributions?.length);
+  const hasProfileRecords = loading || records.length > 0;
 
   return (
     <>
       <header
         aria-busy={loading || undefined}
-        className="border-b border-line bg-surface"
+        className="relative bg-canvas"
         data-loading={loading || undefined}
       >
-        <PublicShell className="grid grid-cols-[minmax(280px,420px)_minmax(0,1fr)] items-start gap-[clamp(3rem,7vw,7rem)] py-20 max-[960px]:max-w-[760px] max-[960px]:grid-cols-1 max-[640px]:gap-8 max-[640px]:py-12">
-          <div className="grid gap-4">
+        <FrameBays pattern="plus" />
+        {hasResearchOutputs || hasProfileRecords ? (
+          <FrameRule edge="bottom" />
+        ) : null}
+        <PublicShell className="relative grid grid-cols-[minmax(280px,420px)_minmax(0,1fr)] items-start gap-[clamp(3rem,7vw,7rem)] pt-[clamp(2.3rem,4.5vw,4.2rem)] pb-[clamp(3rem,6vw,5rem)] max-[960px]:max-w-[760px] max-[960px]:grid-cols-1 max-[640px]:gap-8 max-[640px]:pt-8 max-[640px]:pb-12">
+          <div className="relative z-[1] grid gap-4">
             <Link
               className="inline-flex w-fit items-center gap-1.5 text-[.78rem] text-ink-muted hover:text-brand"
               href="/people"
@@ -50,26 +61,31 @@ export function PersonProfileView({
               variant="profile"
             />
           </div>
-          <div className="min-w-0">
-            <div className="mb-6 flex flex-wrap gap-[.45rem]">
-              {visibleRoles.map((role, index) => (
-                <span
-                  className={cn(
-                    "bg-brand-soft px-[.58rem] py-[.38rem] font-mono text-[.65rem] font-bold tracking-[.06em] text-brand uppercase",
-                    loading && loadingPlaceholder(true, "label"),
-                  )}
-                  data-placeholder={loading ? "label" : undefined}
-                  key={`${role}-${index}`}
-                >
-                  {role}
-                </span>
-              ))}
+          <div className="relative z-[1] min-w-0">
+            <div
+              aria-hidden={loading || undefined}
+              className="mb-6 flex flex-wrap gap-2"
+            >
+              {visibleRoles.map((role, index) =>
+                loading ? (
+                  <span
+                    className={loadingPlaceholder(true, "label", "medium")}
+                    data-placeholder="label"
+                    key={`${role}-${index}`}
+                  />
+                ) : (
+                  <Badge key={`${role}-${index}`} tone="info">
+                    {role}
+                  </Badge>
+                ),
+              )}
             </div>
             <h1
               className={cn(
-                "m-0 font-serif text-[clamp(3rem,6vw,6rem)] leading-[.96] font-normal tracking-[-.055em] max-[640px]:text-[clamp(2.5rem,13vw,4rem)]",
+                "m-0 font-sans text-[clamp(2.6rem,4.2vw,3.8rem)] leading-[.98] font-medium tracking-[-.045em] max-[640px]:text-[clamp(2rem,9vw,2.7rem)]",
                 loading && loadingPlaceholder(true, "text"),
               )}
+              aria-hidden={loading || undefined}
               data-placeholder={loading ? "text" : undefined}
             >
               {person?.fullName ?? "Research member name"}
@@ -77,9 +93,10 @@ export function PersonProfileView({
             {loading || person?.headline ? (
               <p
                 className={cn(
-                  "mt-[1.2rem] mb-0 text-base leading-[1.7] text-ink-muted",
+                  "mt-4 mb-0 text-[.95rem] leading-[1.6] text-ink-muted",
                   loading && loadingPlaceholder(true, "text"),
                 )}
+                aria-hidden={loading || undefined}
                 data-placeholder={loading ? "text" : undefined}
               >
                 {loading ? "Profile headline is loading" : person?.headline}
@@ -91,84 +108,73 @@ export function PersonProfileView({
                 text={person?.biography ?? undefined}
               />
             ) : null}
-            <div className="mt-8 flex flex-wrap gap-x-[1.2rem] gap-y-[.6rem]">
-              {loading ? (
-                <>
-                  <a
-                    aria-disabled
-                    className={cn(
-                      "inline-flex items-center gap-[.4rem] break-words text-[.8rem] text-brand",
-                      loadingPlaceholder(true, "text"),
-                    )}
-                    data-placeholder="text"
-                    href="#"
-                    tabIndex={-1}
-                  >
-                    <Mail
+            {loading ||
+            person?.email ||
+            person?.phone ||
+            person?.links?.length ? (
+              <div className="relative mt-7 flex max-w-[760px] flex-wrap gap-x-6 gap-y-3 border-y border-line-strong py-3">
+                {loading ? (
+                  <>
+                    <span
                       aria-hidden="true"
-                      className="opacity-[.12]"
-                      data-loading-icon="true"
-                      size={16}
-                    />{" "}
-                    Loading email
-                  </a>
-                  <a
-                    aria-disabled
-                    className={cn(
-                      "inline-flex items-center gap-[.4rem] break-words text-[.8rem] text-brand",
-                      loadingPlaceholder(true, "text"),
-                    )}
-                    data-placeholder="text"
-                    href="#"
-                    tabIndex={-1}
-                  >
-                    <ExternalLink
+                      className="inline-flex items-center"
+                    >
+                      <span
+                        className={loadingPlaceholder(true, "text", "medium")}
+                        data-placeholder="text"
+                      />
+                    </span>
+                    <span
                       aria-hidden="true"
-                      className="opacity-[.12]"
-                      data-loading-icon="true"
-                      size={16}
-                    />{" "}
-                    Loading link
-                  </a>
-                </>
-              ) : (
-                <>
-                  {person?.email ? (
-                    <a
-                      className="inline-flex items-center gap-[.4rem] break-words text-[.8rem] text-brand hover:text-brand-hover"
-                      href={`mailto:${person.email}`}
+                      className="inline-flex items-center"
                     >
-                      <Mail aria-hidden="true" size={16} /> {person.email}
-                    </a>
-                  ) : null}
-                  {person?.phone ? (
-                    <a
-                      className="inline-flex items-center gap-[.4rem] break-words text-[.8rem] text-brand hover:text-brand-hover"
-                      href={`tel:${person.phone}`}
-                    >
-                      <Phone aria-hidden="true" size={16} /> {person.phone}
-                    </a>
-                  ) : null}
-                  {person?.links?.map((link) => (
-                    <a
-                      className="inline-flex items-center gap-[.4rem] break-words text-[.8rem] text-brand hover:text-brand-hover"
-                      href={link.url}
-                      key={link.id}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink aria-hidden="true" size={16} /> {link.label}
-                    </a>
-                  ))}
-                </>
-              )}
-            </div>
+                      <span
+                        className={loadingPlaceholder(true, "text", "medium")}
+                        data-placeholder="text"
+                      />
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {person?.email ? (
+                      <a
+                        className="inline-flex items-center gap-2 break-words text-[.78rem] text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-brand"
+                        href={`mailto:${person.email}`}
+                      >
+                        <Mail aria-hidden="true" size={16} /> {person.email}
+                      </a>
+                    ) : null}
+                    {person?.phone ? (
+                      <a
+                        className="inline-flex items-center gap-2 break-words text-[.78rem] text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-brand"
+                        href={`tel:${person.phone}`}
+                      >
+                        <Phone aria-hidden="true" size={16} /> {person.phone}
+                      </a>
+                    ) : null}
+                    {person?.links?.map((link) => (
+                      <a
+                        className="inline-flex items-center gap-2 break-words text-[.78rem] text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-brand"
+                        href={link.url}
+                        key={link.id}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <ExternalLink aria-hidden="true" size={16} />{" "}
+                        {link.label}
+                      </a>
+                    ))}
+                  </>
+                )}
+              </div>
+            ) : null}
             {loading || person?.contactAddress ? (
               <p
                 className={cn(
-                  "mt-5 mb-0 max-w-[620px] font-mono text-[.72rem] leading-[1.5] text-ink-muted",
+                  "mt-4 mb-0 max-w-[620px] font-mono text-[.68rem] leading-[1.6] text-ink-muted",
                   loading && loadingPlaceholder(true, "text"),
                 )}
+                aria-hidden={loading || undefined}
                 data-placeholder={loading ? "text" : undefined}
               >
                 {loading
@@ -183,6 +189,7 @@ export function PersonProfileView({
         <PersonResearchOutputs
           contributions={person?.contributions ?? []}
           loading={loading}
+          borderBottom={hasProfileRecords}
         />
       ) : null}
       {loading || records.length ? (

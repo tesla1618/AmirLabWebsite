@@ -9,20 +9,19 @@ import { ToolbarSearchField } from "./ui/toolbar-search-field";
 import { DateRangePicker } from "./ui/date-range-picker";
 import { SelectControl } from "./ui/select-control";
 import { Badge, type BadgeTone } from "./ui/badge";
-import {
-  DataTable,
-  DataTableCard,
-  DataTableCell,
-  DataTableHeadCell,
-  DataTableRow,
-  DataTableShell,
-} from "@/components/ui/data-table";
+import { DataTableShell } from "@/components/ui/data-table";
 import { apiRequest } from "@/lib/client-api";
 import type { PaginatedResponse } from "@/lib/types";
-import { ButtonControl, ButtonLink } from "@/components/ui/button-control";
+import { ButtonControl } from "@/components/ui/button-control";
 import { FormField } from "@/components/ui/form-field";
 import { ReviewIssueStamp } from "@/components/ui/semantic-status";
 import type { ReviewIssue } from "@/lib/review-issues";
+import {
+  ReviewSplit,
+  WorkspaceRuleBand,
+} from "@/components/ui/workspace-surface";
+import { ApplicationReviewDetail } from "@/components/application-review-detail";
+import { useReviewSelection } from "@/lib/use-review-selection";
 
 interface ApplicationSummary {
   id: string;
@@ -97,6 +96,26 @@ export function ApplicationReviewQueue() {
     };
   }, [deferredSearch, from, page, reload, sort, status, to]);
 
+  const items = result?.items ?? [];
+  const initialLoading = loading && !result;
+  const { selectedId, select } = useReviewSelection("/workspace/applications", {
+    firstId: items[0]?.id,
+    ready: !loading,
+    viewKey: `${page}|${deferredSearch}|${status}|${sort}|${from}|${to}`,
+  });
+  const outsideQueue = Boolean(
+    selectedId && result && !items.some(({ id }) => id === selectedId),
+  );
+
+  function openNextAfterDecision() {
+    const index = items.findIndex(({ id }) => id === selectedId);
+    const next =
+      index >= 0 ? (items[index + 1] ?? items[index - 1]) : undefined;
+    select(next?.id);
+    setLoading(true);
+    setReload((current) => current + 1);
+  }
+
   const filtered = Boolean(search || from || to || status !== "ALL");
   const clear = () => {
     setLoading(true);
@@ -109,7 +128,7 @@ export function ApplicationReviewQueue() {
 
   return (
     <DataTableShell>
-      <div className="grid min-w-0 grid-cols-[minmax(220px,1.4fr)_repeat(2,minmax(140px,.52fr))_minmax(220px,.8fr)_auto] items-end gap-[.8rem] rounded-panel border border-line bg-surface p-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
+      <WorkspaceRuleBand contentClassName="grid min-w-0 grid-cols-[minmax(220px,1.4fr)_repeat(2,minmax(140px,.52fr))_minmax(220px,.8fr)_auto] items-end gap-[.8rem] px-[var(--workspace-gutter)] py-3.5 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:px-4">
         <ToolbarSearchField
           id="application-search"
           label="Search"
@@ -167,7 +186,7 @@ export function ApplicationReviewQueue() {
         <ButtonControl disabled={!filtered} onClick={clear}>
           Clear
         </ButtonControl>
-      </div>
+      </WorkspaceRuleBand>
 
       {error && result ? (
         <p className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted rounded-panel bg-danger-soft p-[.8rem] text-danger">
@@ -177,6 +196,7 @@ export function ApplicationReviewQueue() {
 
       {error && !result ? (
         <StatePanel
+          frame="workspace"
           action={{
             label: "Retry",
             onClick: () => {
@@ -189,162 +209,61 @@ export function ApplicationReviewQueue() {
           variant="error"
         />
       ) : loading || result?.items.length ? (
-        <>
-          <DataTableCard data-loading={loading || undefined}>
-            <DataTable>
-              <thead>
-                <tr>
-                  <DataTableHeadCell>Applicant</DataTableHeadCell>
-                  <DataTableHeadCell>Position</DataTableHeadCell>
-                  <DataTableHeadCell>Submitted</DataTableHeadCell>
-                  <DataTableHeadCell>ATS check</DataTableHeadCell>
-                  <DataTableHeadCell>Status</DataTableHeadCell>
-                  <DataTableHeadCell>
-                    <span className="sr-only">Action</span>
-                  </DataTableHeadCell>
-                  <DataTableHeadCell className="w-[48px]">
-                    <span className="sr-only">Attention</span>
-                  </DataTableHeadCell>
-                </tr>
-              </thead>
-              <tbody>
-                {(loading && !result?.items.length
+        <ReviewSplit
+          detail={
+            <>
+              {outsideQueue ? (
+                <p className="m-0 font-mono text-[.62rem] tracking-[.08em] text-ink-muted uppercase">
+                  Opened from a link · not in the current queue view
+                </p>
+              ) : null}
+              <ApplicationReviewDetail
+                id={selectedId}
+                key={selectedId ?? "loading"}
+                onDecided={openNextAfterDecision}
+              />
+            </>
+          }
+          dimQueue={loading && Boolean(result)}
+          queue={
+            <>
+              <div className="grid min-w-0 gap-3 border-b border-line px-[var(--workspace-gutter)] py-4">
+                <p className="m-0 font-[var(--font-sans)] text-[.75rem] font-extrabold tracking-[.12em] text-brand uppercase">
+                  Applications
+                </p>
+                <PaginationControls
+                  loading={loading}
+                  onPageChange={(nextPage) => {
+                    setLoading(true);
+                    setPage(nextPage);
+                  }}
+                  page={page}
+                  pageSize={result?.pageSize ?? 20}
+                  total={result?.total}
+                  totalPages={result?.totalPages ?? 1}
+                />
+              </div>
+              <div data-loading={initialLoading || undefined}>
+                {(initialLoading
                   ? Array.from({ length: LOADING_ROWS }, () => undefined)
-                  : (result?.items ?? [])
-                ).map((application, row) => {
-                  const failed = application?.status === "PARSE_FAILED";
-                  return (
-                    <DataTableRow
-                      key={application?.id ?? `application-loading-${row}`}
-                    >
-                      <DataTableCell>
-                        <strong
-                          className={cn(
-                            "block",
-                            loadingPlaceholder(loading, "text", "long"),
-                          )}
-                          data-placeholder="text"
-                          data-placeholder-width="long"
-                        >
-                          {application?.fullName ?? "Loading applicant"}
-                        </strong>
-                        <span
-                          className={cn(
-                            "mt-[.2rem] block text-[.72rem] text-ink-muted",
-                            loadingPlaceholder(loading, "label", "medium"),
-                          )}
-                          data-placeholder="label"
-                          data-placeholder-width="medium"
-                        >
-                          {application?.email ?? "loading@example.org"}
-                        </span>
-                      </DataTableCell>
-                      <DataTableCell>
-                        <span
-                          className={cn(
-                            "block",
-                            loadingPlaceholder(loading, "text", "long"),
-                          )}
-                          data-placeholder="text"
-                          data-placeholder-width="long"
-                        >
-                          {application?.position.title ?? "Loading position"}
-                        </span>
-                      </DataTableCell>
-                      <DataTableCell className="font-mono text-[.7rem] text-ink-muted">
-                        <time
-                          className={cn(
-                            "block",
-                            loadingPlaceholder(loading, "label", "medium"),
-                          )}
-                          data-placeholder="label"
-                          data-placeholder-width="medium"
-                          dateTime={application?.createdAt}
-                        >
-                          {application?.createdAt
-                            ? new Date(
-                                application.createdAt,
-                              ).toLocaleDateString()
-                            : "Loading date"}
-                        </time>
-                      </DataTableCell>
-                      <DataTableCell>
-                        <Badge
-                          dot
-                          loading={loading}
-                          tone={
-                            failed
-                              ? "error"
-                              : application?.status === "PARSING"
-                                ? "warning"
-                                : "success"
-                          }
-                        >
-                          {failed
-                            ? "Not readable"
-                            : application?.status === "PARSING"
-                              ? "Processing"
-                              : "Passed"}
-                        </Badge>
-                      </DataTableCell>
-                      <DataTableCell>
-                        <Badge
-                          dot
-                          loading={loading}
-                          live={application?.status === "NEEDS_REVIEW"}
-                          tone={
-                            application
-                              ? applicationTone(application.status)
-                              : "neutral"
-                          }
-                        >
-                          {application ? label(application.status) : "Loading"}
-                        </Badge>
-                      </DataTableCell>
-                      <DataTableCell>
-                        <ButtonLink
-                          compact
-                          href={
-                            application
-                              ? `/workspace/applications/${application.id}`
-                              : "#"
-                          }
-                          loading={loading || !application}
-                          variant="secondary"
-                        >
-                          {application?.status === "NEEDS_REVIEW"
-                            ? "Review"
-                            : "View"}
-                        </ButtonLink>
-                      </DataTableCell>
-                      <DataTableCell className="relative w-[48px] p-0">
-                        {application ? (
-                          <ReviewIssueStamp
-                            className="right-2 top-1/2 -translate-y-1/2"
-                            issue={applicationStatusIssue(application)}
-                          />
-                        ) : null}
-                      </DataTableCell>
-                    </DataTableRow>
-                  );
-                })}
-              </tbody>
-            </DataTable>
-          </DataTableCard>
-          <PaginationControls
-            loading={loading}
-            onPageChange={(nextPage) => {
-              setLoading(true);
-              setPage(nextPage);
-            }}
-            page={result?.page ?? page}
-            pageSize={result?.pageSize ?? 20}
-            total={result?.total ?? 0}
-            totalPages={result?.totalPages ?? 1}
-          />
-        </>
+                  : items
+                ).map((application, row) => (
+                  <ApplicationQueueRow
+                    application={application}
+                    key={application?.id ?? `application-loading-${row}`}
+                    onSelect={() => application && select(application.id)}
+                    selected={Boolean(
+                      application && application.id === selectedId,
+                    )}
+                  />
+                ))}
+              </div>
+            </>
+          }
+        />
       ) : (
         <StatePanel
+          frame="workspace"
           action={
             filtered ? { label: "Clear filters", onClick: clear } : undefined
           }
@@ -362,6 +281,91 @@ export function ApplicationReviewQueue() {
         />
       )}
     </DataTableShell>
+  );
+}
+
+function ApplicationQueueRow({
+  application,
+  onSelect,
+  selected,
+}: {
+  application?: ApplicationSummary;
+  onSelect: () => void;
+  selected: boolean;
+}) {
+  const loading = !application;
+  const failed = application?.status === "PARSE_FAILED";
+  return (
+    <div
+      className={cn(
+        "relative border-b border-line transition-colors last:border-b-0",
+        selected ? "bg-brand-soft" : "hover:bg-surface-subtle",
+      )}
+    >
+      <button
+        aria-current={selected || undefined}
+        className="grid w-full min-w-0 cursor-pointer gap-[.35rem] border-0 bg-transparent py-3.5 pr-10 pl-[var(--workspace-gutter)] text-left disabled:cursor-default"
+        disabled={loading}
+        onClick={onSelect}
+        type="button"
+      >
+        <strong
+          className={cn(
+            "block truncate text-[.86rem] font-medium",
+            loadingPlaceholder(loading, "text", "long"),
+          )}
+          data-placeholder="text"
+          data-placeholder-width="long"
+        >
+          {application?.fullName ?? "Loading applicant"}
+        </strong>
+        <span
+          className={cn(
+            "truncate text-[.72rem] text-ink-muted",
+            loadingPlaceholder(loading, "label", "long"),
+          )}
+          data-placeholder="label"
+          data-placeholder-width="long"
+        >
+          {application
+            ? `${application.position.title} · ${new Date(application.createdAt).toLocaleDateString()}`
+            : "Loading position and date"}
+        </span>
+        <span className="flex flex-wrap gap-[.4rem]">
+          <Badge
+            dot
+            loading={loading}
+            live={application?.status === "NEEDS_REVIEW"}
+            tone={application ? applicationTone(application.status) : "neutral"}
+          >
+            {application ? label(application.status) : "Loading"}
+          </Badge>
+          <Badge
+            dot
+            loading={loading}
+            tone={
+              failed
+                ? "error"
+                : application?.status === "PARSING"
+                  ? "warning"
+                  : "success"
+            }
+          >
+            {failed
+              ? "CV not readable"
+              : application?.status === "PARSING"
+                ? "CV processing"
+                : "CV passed"}
+          </Badge>
+        </span>
+      </button>
+      {application ? (
+        <ReviewIssueStamp
+          className="top-2 right-2"
+          issue={applicationStatusIssue(application)}
+        />
+      ) : null}
+    </div>
   );
 }
 

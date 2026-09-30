@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 
 export const formControlClass =
-  "h-[var(--control-height)] min-h-[var(--control-height)] w-full rounded-control border border-line bg-surface px-4 py-0 text-[.9rem] font-normal leading-[1.45] text-ink transition-[border-color,box-shadow,background] duration-150 hover:not-disabled:border-[color-mix(in_srgb,var(--brand)_42%,var(--line))] focus-visible:border-brand focus-visible:shadow-[var(--focus-ring)] aria-invalid:border-danger disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-ink-faint motion-reduce:transition-none";
+  "h-[var(--control-height)] min-h-[var(--control-height)] w-full rounded-[var(--radius-control)] border border-line-strong bg-surface px-3 py-0 [font-size:var(--control-text-size)] font-normal leading-[1.45] text-ink transition-[border-color,box-shadow,background] duration-150 placeholder:text-ink-faint hover:not-disabled:border-line-strong focus-visible:border-brand focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] aria-invalid:border-danger aria-invalid:focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--danger)_20%,transparent)] disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-ink-faint motion-reduce:transition-none";
 
 export const InputControl = forwardRef<
   HTMLInputElement,
@@ -21,6 +21,7 @@ export const InputControl = forwardRef<
         loading && loadingPlaceholder(true, "control"),
         className,
       )}
+      data-loading={loading || undefined}
       data-placeholder={loading ? "control" : props["data-placeholder"]}
       {...props}
     />
@@ -39,10 +40,11 @@ export const TextareaControl = forwardRef<
       ref={ref}
       className={cn(
         formControlClass,
-        "h-auto! min-h-[120px]! resize-y rounded-panel py-3",
+        "h-auto! min-h-[92px]! resize-y rounded-[var(--radius-control)] py-2.5",
         loading && loadingPlaceholder(true, "control"),
         className,
       )}
+      data-loading={loading || undefined}
       data-placeholder={loading ? "control" : props["data-placeholder"]}
       {...props}
     />

@@ -2,12 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Menu } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { BrandLockup } from "@/components/brand-mark";
 import { useNotifications } from "@/components/notification-provider";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { ButtonLink } from "@/components/ui/button-control";
+import { CountPill } from "@/components/ui/count-pill";
+import {
+  AccountIdentity,
+  MenuSheet,
+  MenuSheetDivider,
+  MenuSheetLink,
+  UnreadDot,
+  unreadLabel,
+} from "@/components/menu-sheet";
+import { RowActionMenuItem } from "@/components/ui/row-action-menu";
+import type { AuthenticatedUser } from "@/lib/types";
+import {
+  FrameBays,
+  FrameRails,
+  FrameRule,
+  publicShellClass,
+} from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 
 const NAVIGATION = [
@@ -25,112 +44,199 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const { loading, user } = useAuth();
   const { loading: notificationsLoading, unreadCount } = useNotifications();
-  const accountName = user?.person?.fullName ?? user?.email ?? "Account";
-
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+  // Only signed-in members have notifications; hide the count until known.
+  const unread = user && !notificationsLoading ? unreadCount : 0;
 
   return (
-    <header className="sticky top-0 z-[60] border-b border-line-strong bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] backdrop-blur-[12px]">
-      <div className="mx-auto grid min-h-[62px] w-full max-w-[var(--public-wide)] grid-cols-[minmax(230px,.8fr)_minmax(0,1.5fr)_auto] items-center gap-[clamp(1rem,2.2vw,2.2rem)] px-[clamp(1rem,3.2vw,3rem)] max-[1050px]:grid-cols-[minmax(210px,1fr)_auto_auto] max-[560px]:min-h-[58px] max-[560px]:grid-cols-[minmax(0,1fr)_auto_auto] max-[560px]:gap-2">
+    <header className="sticky top-0 z-[60] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] backdrop-blur-[12px]">
+      <FrameBays pattern="grid" />
+      <FrameRails />
+      <FrameRule edge="bottom" nodeSurface="surface" scope="parent" />
+      <div
+        className={cn(
+          publicShellClass,
+          "relative z-[6] grid min-h-[55px] grid-cols-[minmax(230px,.8fr)_minmax(0,1.5fr)_auto] items-center gap-[clamp(1rem,2.2vw,2.2rem)] max-[1050px]:grid-cols-[minmax(0,1fr)_auto] max-[1050px]:pb-px",
+        )}
+      >
         <Link
           className="inline-flex w-fit min-w-0 items-center"
           href="/"
-          onClick={() => setOpen(false)}
           prefetch={false}
         >
           <BrandLockup />
         </Link>
         <nav
           aria-label="Main navigation"
-          className={cn(
-            "flex min-w-0 items-stretch justify-center gap-[clamp(.75rem,1.4vw,1.35rem)] max-[1050px]:fixed max-[1050px]:inset-x-0 max-[1050px]:top-[62px] max-[1050px]:z-[55] max-[1050px]:h-[calc(100dvh-62px)] max-[1050px]:grid-rows-[repeat(7,min-content)] max-[1050px]:content-start max-[1050px]:items-start max-[1050px]:overflow-y-auto max-[1050px]:overscroll-contain max-[1050px]:border-b max-[1050px]:border-line-strong max-[1050px]:bg-surface max-[1050px]:px-4 max-[1050px]:pt-2 max-[1050px]:pb-8 max-[560px]:top-[58px] max-[560px]:h-[calc(100dvh-58px)]",
-            open ? "max-[1050px]:grid" : "max-[1050px]:hidden",
-          )}
+          className="flex min-w-0 items-stretch justify-center gap-[clamp(.75rem,1.4vw,1.35rem)] max-[1050px]:hidden"
         >
           {NAVIGATION.map(([label, href]) => (
             <Link
               className={cn(
-                "flex min-h-[62px] items-center whitespace-nowrap border-b-2 border-b-transparent text-[.73rem] font-semibold text-ink-muted hover:text-ink-strong max-[1050px]:min-h-12 max-[1050px]:w-full max-[1050px]:justify-center max-[1050px]:border-b max-[1050px]:border-line max-[1050px]:px-[.2rem]",
+                "flex min-h-[55px] items-center border-b-2 border-b-transparent text-[.8rem] font-medium whitespace-nowrap text-ink-muted hover:text-ink-strong",
                 pathname === href && "border-b-brand text-ink-strong",
               )}
               href={href}
               key={href}
-              onClick={() => setOpen(false)}
               prefetch={false}
             >
               {label}
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex min-w-16 justify-end">
-          {loading ? (
-            <span
-              aria-label="Loading account"
-              className="pointer-events-none"
-              role="status"
-            >
-              <ProfileAvatar loading name="Account" shape="round" />
-            </span>
-          ) : user ? (
-            <div className="flex items-center gap-[.45rem]">
-              <Link
-                aria-label={
-                  notificationsLoading
-                    ? "Notifications"
-                    : `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
-                }
-                className="relative flex h-[38px] w-[38px] items-center justify-center rounded-control border border-transparent text-ink-muted"
-                href="/workspace/notifications"
-                prefetch={false}
-                title="Notifications"
+        {/* Account + menu share one cell. On small screens the menu button
+            sits the same distance (7px) from the header top, the bottom rule
+            (pb-px keeps it centred above the rule), and the inner rail. Below
+            1051px all account actions live in the menu sheet. */}
+        <div className="flex items-center justify-end gap-2 max-[1050px]:-mr-[calc(var(--public-gutter)_-_8px)]">
+          <div className="flex min-w-16 justify-end max-[1050px]:hidden">
+            {loading ? (
+              <span
+                aria-label="Loading account"
+                className="pointer-events-none"
+                role="status"
               >
-                <Bell aria-hidden="true" size={21} />
-                {unreadCount > 0 ? (
-                  <span className="absolute -top-1 -right-[5px] flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-surface bg-danger font-mono text-[.52rem] text-white">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                ) : null}
-              </Link>
+                <ProfileAvatar loading name="Account" shape="round" />
+              </span>
+            ) : user ? (
+              <AccountMenu unread={unread} user={user} />
+            ) : (
               <Link
-                aria-label={`Manage ${accountName}`}
-                href="/workspace"
+                className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-control border border-line-strong bg-transparent px-[.78rem] py-2 text-[.78rem] font-semibold hover:bg-brand-faint"
+                href="/login"
                 prefetch={false}
-                title={accountName}
               >
-                <ProfileAvatar
-                  avatarId={user.person?.avatar?.id}
-                  name={accountName}
-                  shape="round"
-                />
+                Log in
               </Link>
-            </div>
-          ) : (
-            <Link
-              className="inline-flex min-h-9 items-center justify-center rounded-control border border-line-strong bg-transparent px-[.78rem] py-2 text-[.78rem] font-semibold hover:bg-brand-faint"
-              href="/login"
-              prefetch={false}
-            >
-              Log in
-            </Link>
-          )}
+            )}
+          </div>
+          <button
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            aria-label={`Open menu${unreadLabel(unread)}`}
+            className="relative hidden h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-transparent p-0 max-[1050px]:inline-flex"
+            onClick={() => setOpen(true)}
+            type="button"
+          >
+            <Menu aria-hidden="true" />
+            {unread ? <UnreadDot inside /> : null}
+          </button>
         </div>
+      </div>
+      <SiteMenuSheet
+        onClose={() => setOpen(false)}
+        open={open}
+        pathname={pathname}
+        unread={unread}
+        user={user}
+      />
+    </header>
+  );
+}
+
+/** Small-screen site menu: account, every destination, and sign-in. */
+function SiteMenuSheet({
+  onClose,
+  open,
+  pathname,
+  unread,
+  user,
+}: {
+  onClose: () => void;
+  open: boolean;
+  pathname: string;
+  unread: number;
+  user: AuthenticatedUser | null;
+}) {
+  return (
+    <MenuSheet label="Site menu" onClose={onClose} open={open}>
+      {user ? (
+        <div className="grid">
+          <AccountIdentity user={user} />
+          <MenuSheetLink href="/workspace/notifications" onClose={onClose}>
+            Notifications
+            {unread ? (
+              <CountPill className="ml-auto text-brand" count={unread} />
+            ) : null}
+          </MenuSheetLink>
+          <MenuSheetDivider />
+        </div>
+      ) : null}
+      <nav aria-label="Site menu" className="grid">
+        <MenuSheetLink active={pathname === "/"} href="/" onClose={onClose}>
+          Home
+        </MenuSheetLink>
+        <MenuSheetDivider />
+        {NAVIGATION.map(([label, href]) => (
+          <MenuSheetLink
+            active={pathname === href}
+            href={href}
+            key={href}
+            onClose={onClose}
+          >
+            {label}
+          </MenuSheetLink>
+        ))}
+      </nav>
+      <ButtonLink
+        className="w-full justify-center"
+        href={user ? "/workspace" : "/login"}
+        onClick={onClose}
+        prefetch={false}
+        variant={user ? "secondary" : "primary"}
+      >
+        {user ? "Open workspace" : "Log in"}
+      </ButtonLink>
+    </MenuSheet>
+  );
+}
+
+/** Desktop account menu: identity, notifications, and the workspace. */
+function AccountMenu({
+  unread,
+  user,
+}: {
+  unread: number;
+  user: AuthenticatedUser;
+}) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
         <button
-          aria-expanded={open}
-          aria-label={open ? "Close menu" : "Open menu"}
-          className="hidden h-[38px] w-[38px] items-center justify-center rounded-control border border-line-strong bg-transparent p-0 max-[1050px]:inline-flex"
-          onClick={() => setOpen((value) => !value)}
+          aria-label={`Account menu${unreadLabel(unread)}`}
+          className="relative inline-flex cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:shadow-[var(--focus-ring)]"
           type="button"
         >
-          {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          <ProfileAvatar
+            avatarId={user.person?.avatar?.id}
+            name={user.person?.fullName ?? user.email}
+            shape="round"
+          />
+          {unread ? <UnreadDot /> : null}
         </button>
-      </div>
-    </header>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          className="z-[90] grid w-64 animate-[popover-enter_160ms_ease-out_both] gap-0.5 rounded-control border border-line-strong bg-surface p-1.5 shadow-[var(--shadow-float)] motion-reduce:animate-none"
+          sideOffset={8}
+        >
+          <AccountIdentity user={user} />
+          <DropdownMenu.Separator className="my-1 h-px bg-line" />
+          <RowActionMenuItem asChild className="justify-between">
+            <Link href="/workspace/notifications" prefetch={false}>
+              Notifications
+              {unread ? (
+                <CountPill className="text-brand" count={unread} />
+              ) : null}
+            </Link>
+          </RowActionMenuItem>
+          <RowActionMenuItem asChild>
+            <Link href="/workspace" prefetch={false}>
+              Open workspace
+            </Link>
+          </RowActionMenuItem>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

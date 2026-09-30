@@ -1,0 +1,355 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="t d">
+<title id="t">Raw data curated into datasets</title>
+<desc id="d">Scattered raw data of different kinds passes through a curation step and fills a structured dataset row by row. Each completed row is marked as a new version.</desc>
+<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<style>
+.edge{fill:none;stroke:#aab3ad;stroke-width:1;stroke-dasharray:2 3;opacity:.75}
+.guide{stroke:#1f2421;stroke-opacity:.12}
+.node{fill:#f7f8f6;stroke:#1f2421;stroke-opacity:.5;stroke-width:1}
+.pin{fill:#1f2421;opacity:.5}
+.pt{animation:drift 5s ease-in-out infinite alternate}
+.s1{fill:none;stroke:#315bd6;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:14 200;stroke-dashoffset:214;opacity:0;animation:s1 14.58s linear infinite}
+.s2{fill:none;stroke:#315bd6;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:14 200;stroke-dashoffset:214;opacity:0;animation:s2 14.58s linear infinite}
+.flash{fill:#315bd6;opacity:0;animation:flash 14.58s ease-out infinite}
+.gate{fill:#315bd6;opacity:0;animation:gate 14.58s linear infinite}
+.cell{fill:#315bd6;opacity:0}
+.ver{fill:#315bd6;opacity:0;transform-box:fill-box;transform-origin:center}
+.frame{fill:none;stroke:#315bd6;stroke-opacity:.4;stroke-dasharray:2 3}
+@keyframes drift{to{transform:translate(var(--dx),var(--dy))}}
+@keyframes s1{0%{stroke-dashoffset:214;opacity:0}.4%{opacity:1}3.03%{opacity:1}3.43%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes s2{0%{stroke-dashoffset:214;opacity:0}.4%{opacity:1}3.72%{opacity:1}4.12%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes flash{0%{opacity:0}.8%{opacity:.95}3.43%,100%{opacity:0}}
+@keyframes gate{0%,2.74%{opacity:0}4.46%,72.57%{opacity:.95}75.99%,100%{opacity:0}}
+@keyframes c0{0%,7.20%{opacity:0}8.23%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c1{0%,9.12%{opacity:0}10.15%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c2{0%,11.04%{opacity:0}12.07%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c3{0%,12.96%{opacity:0}13.99%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c4{0%,14.88%{opacity:0}15.91%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c5{0%,16.80%{opacity:0}17.83%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c6{0%,18.72%{opacity:0}19.75%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c7{0%,20.64%{opacity:0}21.67%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c8{0%,22.57%{opacity:0}23.59%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c9{0%,24.49%{opacity:0}25.51%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c10{0%,26.41%{opacity:0}27.43%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c11{0%,28.33%{opacity:0}29.36%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c12{0%,30.25%{opacity:0}31.28%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c13{0%,32.17%{opacity:0}33.20%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c14{0%,34.09%{opacity:0}35.12%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c15{0%,36.01%{opacity:0}37.04%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c16{0%,37.93%{opacity:0}38.96%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c17{0%,39.85%{opacity:0}40.88%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c18{0%,41.77%{opacity:0}42.80%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c19{0%,43.69%{opacity:0}44.72%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c20{0%,45.61%{opacity:0}46.64%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c21{0%,47.53%{opacity:0}48.56%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c22{0%,49.45%{opacity:0}50.48%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c23{0%,51.37%{opacity:0}52.40%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c24{0%,53.29%{opacity:0}54.32%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c25{0%,55.21%{opacity:0}56.24%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c26{0%,57.13%{opacity:0}58.16%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c27{0%,59.05%{opacity:0}60.08%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c28{0%,60.97%{opacity:0}62.00%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c29{0%,62.89%{opacity:0}63.92%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c30{0%,64.81%{opacity:0}65.84%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c31{0%,66.74%{opacity:0}67.76%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c32{0%,68.66%{opacity:0}69.68%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c33{0%,70.58%{opacity:0}71.60%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c34{0%,72.50%{opacity:0}73.53%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes c35{0%,74.42%{opacity:0}75.45%,91.77%{opacity:.95}97.26%,100%{opacity:0}}
+@keyframes v0{0%,18.18%{opacity:0;transform:scale(.3)}19.89%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@keyframes v1{0%,29.70%{opacity:0;transform:scale(.3)}31.41%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@keyframes v2{0%,41.22%{opacity:0;transform:scale(.3)}42.94%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@keyframes v3{0%,52.74%{opacity:0;transform:scale(.3)}54.46%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@keyframes v4{0%,64.27%{opacity:0;transform:scale(.3)}65.98%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@keyframes v5{0%,75.79%{opacity:0;transform:scale(.3)}77.50%,91.77%{opacity:1;transform:scale(1)}97.26%,100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.cell{opacity:.8}.ver{opacity:1}}
+</style>
+
+<path class="edge" d="M134.9 321.6C217.5 321.6 217.5 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M98.0 357.1C199.0 357.1 199.0 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M123.6 170.5C211.8 170.5 211.8 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M54.4 221.2C177.2 221.2 177.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M80.7 299.6C190.4 299.6 190.4 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M153.4 194.8C226.7 194.8 226.7 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M162.4 238.4C231.2 238.4 231.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M103.7 229.1C201.9 229.1 201.9 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M65.2 122.4C182.6 122.4 182.6 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M161.9 340.5C231.0 340.5 231.0 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M95.1 260.6C197.5 260.6 197.5 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M172.4 268.7C236.2 268.7 236.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M128.9 258.6C214.5 258.6 214.5 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M176.5 214.4C238.2 214.4 238.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M78.4 195.9C189.2 195.9 189.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M124.2 290.3C212.1 290.3 212.1 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M90.5 155.0C195.2 155.0 195.2 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M54.1 170.8C177.1 170.8 177.1 240 288 240" style="opacity:.4"/>
+<path class="edge" d="M312 240C360 240 360 175.0 394 175.0"/>
+<path class="guide" d="M394 175.0H567.0"/>
+<path class="edge" d="M312 240C360 240 360 201.0 394 201.0"/>
+<path class="guide" d="M394 201.0H567.0"/>
+<path class="edge" d="M312 240C360 240 360 227.0 394 227.0"/>
+<path class="guide" d="M394 227.0H567.0"/>
+<path class="edge" d="M312 240C360 240 360 253.0 394 253.0"/>
+<path class="guide" d="M394 253.0H567.0"/>
+<path class="edge" d="M312 240C360 240 360 279.0 394 279.0"/>
+<path class="guide" d="M394 279.0H567.0"/>
+<path class="edge" d="M312 240C360 240 360 305.0 394 305.0"/>
+<path class="guide" d="M394 305.0H567.0"/>
+<g filter="url(#glow)">
+<path class="s1" pathLength="200" d="M78.4 195.9C189.2 195.9 189.2 240 288 240" style="animation-delay:0.00s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H411.0" style="animation-delay:0.50s"/>
+<path class="s1" pathLength="200" d="M162.4 238.4C231.2 238.4 231.2 240 288 240" style="animation-delay:0.28s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H437.0" style="animation-delay:0.78s"/>
+<path class="s1" pathLength="200" d="M124.2 290.3C212.1 290.3 212.1 240 288 240" style="animation-delay:0.56s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H463.0" style="animation-delay:1.06s"/>
+<path class="s1" pathLength="200" d="M124.2 290.3C212.1 290.3 212.1 240 288 240" style="animation-delay:0.84s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H489.0" style="animation-delay:1.34s"/>
+<path class="s1" pathLength="200" d="M95.1 260.6C197.5 260.6 197.5 240 288 240" style="animation-delay:1.12s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H515.0" style="animation-delay:1.62s"/>
+<path class="s1" pathLength="200" d="M54.1 170.8C177.1 170.8 177.1 240 288 240" style="animation-delay:1.40s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 175.0 394 175.0H541.0" style="animation-delay:1.90s"/>
+<path class="s1" pathLength="200" d="M123.6 170.5C211.8 170.5 211.8 240 288 240" style="animation-delay:1.68s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H411.0" style="animation-delay:2.18s"/>
+<path class="s1" pathLength="200" d="M78.4 195.9C189.2 195.9 189.2 240 288 240" style="animation-delay:1.96s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H437.0" style="animation-delay:2.46s"/>
+<path class="s1" pathLength="200" d="M103.7 229.1C201.9 229.1 201.9 240 288 240" style="animation-delay:2.24s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H463.0" style="animation-delay:2.74s"/>
+<path class="s1" pathLength="200" d="M176.5 214.4C238.2 214.4 238.2 240 288 240" style="animation-delay:2.52s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H489.0" style="animation-delay:3.02s"/>
+<path class="s1" pathLength="200" d="M90.5 155.0C195.2 155.0 195.2 240 288 240" style="animation-delay:2.80s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H515.0" style="animation-delay:3.30s"/>
+<path class="s1" pathLength="200" d="M153.4 194.8C226.7 194.8 226.7 240 288 240" style="animation-delay:3.08s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 201.0 394 201.0H541.0" style="animation-delay:3.58s"/>
+<path class="s1" pathLength="200" d="M54.1 170.8C177.1 170.8 177.1 240 288 240" style="animation-delay:3.36s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H411.0" style="animation-delay:3.86s"/>
+<path class="s1" pathLength="200" d="M98.0 357.1C199.0 357.1 199.0 240 288 240" style="animation-delay:3.64s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H437.0" style="animation-delay:4.14s"/>
+<path class="s1" pathLength="200" d="M161.9 340.5C231.0 340.5 231.0 240 288 240" style="animation-delay:3.92s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H463.0" style="animation-delay:4.42s"/>
+<path class="s1" pathLength="200" d="M80.7 299.6C190.4 299.6 190.4 240 288 240" style="animation-delay:4.20s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H489.0" style="animation-delay:4.70s"/>
+<path class="s1" pathLength="200" d="M65.2 122.4C182.6 122.4 182.6 240 288 240" style="animation-delay:4.48s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H515.0" style="animation-delay:4.98s"/>
+<path class="s1" pathLength="200" d="M54.4 221.2C177.2 221.2 177.2 240 288 240" style="animation-delay:4.76s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 227.0 394 227.0H541.0" style="animation-delay:5.26s"/>
+<path class="s1" pathLength="200" d="M123.6 170.5C211.8 170.5 211.8 240 288 240" style="animation-delay:5.04s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H411.0" style="animation-delay:5.54s"/>
+<path class="s1" pathLength="200" d="M65.2 122.4C182.6 122.4 182.6 240 288 240" style="animation-delay:5.32s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H437.0" style="animation-delay:5.82s"/>
+<path class="s1" pathLength="200" d="M103.7 229.1C201.9 229.1 201.9 240 288 240" style="animation-delay:5.60s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H463.0" style="animation-delay:6.10s"/>
+<path class="s1" pathLength="200" d="M172.4 268.7C236.2 268.7 236.2 240 288 240" style="animation-delay:5.88s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H489.0" style="animation-delay:6.38s"/>
+<path class="s1" pathLength="200" d="M162.4 238.4C231.2 238.4 231.2 240 288 240" style="animation-delay:6.16s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H515.0" style="animation-delay:6.66s"/>
+<path class="s1" pathLength="200" d="M128.9 258.6C214.5 258.6 214.5 240 288 240" style="animation-delay:6.44s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 253.0 394 253.0H541.0" style="animation-delay:6.94s"/>
+<path class="s1" pathLength="200" d="M153.4 194.8C226.7 194.8 226.7 240 288 240" style="animation-delay:6.72s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H411.0" style="animation-delay:7.22s"/>
+<path class="s1" pathLength="200" d="M176.5 214.4C238.2 214.4 238.2 240 288 240" style="animation-delay:7.00s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H437.0" style="animation-delay:7.50s"/>
+<path class="s1" pathLength="200" d="M95.1 260.6C197.5 260.6 197.5 240 288 240" style="animation-delay:7.28s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H463.0" style="animation-delay:7.78s"/>
+<path class="s1" pathLength="200" d="M134.9 321.6C217.5 321.6 217.5 240 288 240" style="animation-delay:7.56s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H489.0" style="animation-delay:8.06s"/>
+<path class="s1" pathLength="200" d="M161.9 340.5C231.0 340.5 231.0 240 288 240" style="animation-delay:7.84s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H515.0" style="animation-delay:8.34s"/>
+<path class="s1" pathLength="200" d="M134.9 321.6C217.5 321.6 217.5 240 288 240" style="animation-delay:8.12s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 279.0 394 279.0H541.0" style="animation-delay:8.62s"/>
+<path class="s1" pathLength="200" d="M98.0 357.1C199.0 357.1 199.0 240 288 240" style="animation-delay:8.40s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H411.0" style="animation-delay:8.90s"/>
+<path class="s1" pathLength="200" d="M128.9 258.6C214.5 258.6 214.5 240 288 240" style="animation-delay:8.68s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H437.0" style="animation-delay:9.18s"/>
+<path class="s1" pathLength="200" d="M54.4 221.2C177.2 221.2 177.2 240 288 240" style="animation-delay:8.96s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H463.0" style="animation-delay:9.46s"/>
+<path class="s1" pathLength="200" d="M90.5 155.0C195.2 155.0 195.2 240 288 240" style="animation-delay:9.24s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H489.0" style="animation-delay:9.74s"/>
+<path class="s1" pathLength="200" d="M172.4 268.7C236.2 268.7 236.2 240 288 240" style="animation-delay:9.52s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H515.0" style="animation-delay:10.02s"/>
+<path class="s1" pathLength="200" d="M80.7 299.6C190.4 299.6 190.4 240 288 240" style="animation-delay:9.80s"/>
+<path class="s2" pathLength="200" d="M312 240C360 240 360 305.0 394 305.0H541.0" style="animation-delay:10.30s"/>
+</g>
+<g class="pt" style="--dx:1.8px;--dy:2.3px;animation-delay:-3.0s">
+<rect class="node" x="129.9" y="318.6" width="10.0" height="6.0"/>
+<rect class="flash" x="131.4" y="319.5" width="7.0" height="4.2" style="animation-delay:7.56s"/>
+<rect class="flash" x="131.4" y="319.5" width="7.0" height="4.2" style="animation-delay:8.12s"/>
+</g>
+<g class="pt" style="--dx:-0.4px;--dy:0.5px;animation-delay:-4.2s">
+<rect class="node" x="93.5" y="352.6" width="9.0" height="9.0"/>
+<rect class="flash" x="94.8" y="353.9" width="6.3" height="6.3" style="animation-delay:3.64s"/>
+<rect class="flash" x="94.8" y="353.9" width="6.3" height="6.3" style="animation-delay:8.40s"/>
+</g>
+<g class="pt" style="--dx:-1.2px;--dy:0.2px;animation-delay:-1.4s">
+<rect class="node" x="118.6" y="167.5" width="10.0" height="6.0"/>
+<rect class="flash" x="120.1" y="168.4" width="7.0" height="4.2" style="animation-delay:1.68s"/>
+<rect class="flash" x="120.1" y="168.4" width="7.0" height="4.2" style="animation-delay:5.04s"/>
+</g>
+<g class="pt" style="--dx:1.6px;--dy:-2.9px;animation-delay:-3.4s">
+<circle class="node" cx="54.4" cy="221.2" r="4.5"/>
+<circle class="flash" cx="54.4" cy="221.2" r="3.1" style="animation-delay:4.76s"/>
+<circle class="flash" cx="54.4" cy="221.2" r="3.1" style="animation-delay:8.96s"/>
+</g>
+<g class="pt" style="--dx:2.7px;--dy:-2.9px;animation-delay:-3.0s">
+<circle class="node" cx="80.7" cy="299.6" r="4.5"/>
+<circle class="flash" cx="80.7" cy="299.6" r="3.1" style="animation-delay:4.20s"/>
+<circle class="flash" cx="80.7" cy="299.6" r="3.1" style="animation-delay:9.80s"/>
+</g>
+<g class="pt" style="--dx:0.9px;--dy:2.1px;animation-delay:-2.9s">
+<rect class="node" x="148.9" y="190.3" width="9.0" height="9.0"/>
+<rect class="flash" x="150.2" y="191.7" width="6.3" height="6.3" style="animation-delay:3.08s"/>
+<rect class="flash" x="150.2" y="191.7" width="6.3" height="6.3" style="animation-delay:6.72s"/>
+</g>
+<g class="pt" style="--dx:-1.5px;--dy:-0.6px;animation-delay:-4.8s">
+<rect class="node" x="157.9" y="233.9" width="9.0" height="9.0"/>
+<rect class="flash" x="159.3" y="235.3" width="6.3" height="6.3" style="animation-delay:0.28s"/>
+<rect class="flash" x="159.3" y="235.3" width="6.3" height="6.3" style="animation-delay:6.16s"/>
+</g>
+<g class="pt" style="--dx:2.4px;--dy:-2.2px;animation-delay:-0.5s">
+<rect class="node" x="99.2" y="224.6" width="9.0" height="9.0"/>
+<rect class="flash" x="100.6" y="226.0" width="6.3" height="6.3" style="animation-delay:2.24s"/>
+<rect class="flash" x="100.6" y="226.0" width="6.3" height="6.3" style="animation-delay:5.60s"/>
+</g>
+<g class="pt" style="--dx:-2.4px;--dy:-2.8px;animation-delay:-2.2s">
+<circle class="node" cx="65.2" cy="122.4" r="4.5"/>
+<circle class="flash" cx="65.2" cy="122.4" r="3.1" style="animation-delay:4.48s"/>
+<circle class="flash" cx="65.2" cy="122.4" r="3.1" style="animation-delay:5.32s"/>
+</g>
+<g class="pt" style="--dx:-2.2px;--dy:2.2px;animation-delay:-3.3s">
+<rect class="node" x="157.4" y="336.0" width="9.0" height="9.0"/>
+<rect class="flash" x="158.8" y="337.3" width="6.3" height="6.3" style="animation-delay:3.92s"/>
+<rect class="flash" x="158.8" y="337.3" width="6.3" height="6.3" style="animation-delay:7.84s"/>
+</g>
+<g class="pt" style="--dx:-2.2px;--dy:0.2px;animation-delay:-1.6s">
+<rect class="node" x="90.1" y="257.6" width="10.0" height="6.0"/>
+<rect class="flash" x="91.6" y="258.5" width="7.0" height="4.2" style="animation-delay:1.12s"/>
+<rect class="flash" x="91.6" y="258.5" width="7.0" height="4.2" style="animation-delay:7.28s"/>
+</g>
+<g class="pt" style="--dx:-0.0px;--dy:-1.7px;animation-delay:-0.8s">
+<circle class="node" cx="172.4" cy="268.7" r="4.5"/>
+<circle class="flash" cx="172.4" cy="268.7" r="3.1" style="animation-delay:5.88s"/>
+<circle class="flash" cx="172.4" cy="268.7" r="3.1" style="animation-delay:9.52s"/>
+</g>
+<g class="pt" style="--dx:-1.9px;--dy:-0.7px;animation-delay:-3.5s">
+<rect class="node" x="123.9" y="255.6" width="10.0" height="6.0"/>
+<rect class="flash" x="125.4" y="256.5" width="7.0" height="4.2" style="animation-delay:6.44s"/>
+<rect class="flash" x="125.4" y="256.5" width="7.0" height="4.2" style="animation-delay:8.68s"/>
+</g>
+<g class="pt" style="--dx:0.3px;--dy:-2.7px;animation-delay:-3.6s">
+<rect class="node" x="171.5" y="211.4" width="10.0" height="6.0"/>
+<rect class="flash" x="173.0" y="212.3" width="7.0" height="4.2" style="animation-delay:2.52s"/>
+<rect class="flash" x="173.0" y="212.3" width="7.0" height="4.2" style="animation-delay:7.00s"/>
+</g>
+<g class="pt" style="--dx:2.2px;--dy:1.6px;animation-delay:-4.0s">
+<rect class="node" x="73.4" y="192.9" width="10.0" height="6.0"/>
+<rect class="flash" x="74.9" y="193.8" width="7.0" height="4.2" style="animation-delay:0.00s"/>
+<rect class="flash" x="74.9" y="193.8" width="7.0" height="4.2" style="animation-delay:1.96s"/>
+</g>
+<g class="pt" style="--dx:-3.0px;--dy:-0.2px;animation-delay:-0.3s">
+<rect class="node" x="119.7" y="285.8" width="9.0" height="9.0"/>
+<rect class="flash" x="121.1" y="287.1" width="6.3" height="6.3" style="animation-delay:0.56s"/>
+<rect class="flash" x="121.1" y="287.1" width="6.3" height="6.3" style="animation-delay:0.84s"/>
+</g>
+<g class="pt" style="--dx:1.6px;--dy:-1.9px;animation-delay:-3.6s">
+<rect class="node" x="85.5" y="152.0" width="10.0" height="6.0"/>
+<rect class="flash" x="87.0" y="152.9" width="7.0" height="4.2" style="animation-delay:2.80s"/>
+<rect class="flash" x="87.0" y="152.9" width="7.0" height="4.2" style="animation-delay:9.24s"/>
+</g>
+<g class="pt" style="--dx:-1.5px;--dy:1.2px;animation-delay:-1.6s">
+<rect class="node" x="49.6" y="166.3" width="9.0" height="9.0"/>
+<rect class="flash" x="51.0" y="167.7" width="6.3" height="6.3" style="animation-delay:1.40s"/>
+<rect class="flash" x="51.0" y="167.7" width="6.3" height="6.3" style="animation-delay:3.36s"/>
+</g>
+<rect class="frame" x="278" y="218" width="44" height="44" transform="rotate(45 300 240)"/>
+<rect class="node" x="291" y="231" width="18" height="18"/>
+<rect class="gate" x="293.5" y="233.5" width="13" height="13"/>
+<rect class="pin" x="299" y="239" width="2" height="2"/>
+<rect x="403.0" y="158.0" width="164.0" height="164.0" fill="none" stroke="#1f2421" stroke-opacity=".25"/>
+<rect x="401.0" y="156.0" width="4" height="4" fill="#f7f8f6" stroke="#1f2421" stroke-opacity=".5"/>
+<rect x="565.0" y="156.0" width="4" height="4" fill="#f7f8f6" stroke="#1f2421" stroke-opacity=".5"/>
+<rect x="401.0" y="320.0" width="4" height="4" fill="#f7f8f6" stroke="#1f2421" stroke-opacity=".5"/>
+<rect x="565.0" y="320.0" width="4" height="4" fill="#f7f8f6" stroke="#1f2421" stroke-opacity=".5"/>
+<rect class="node" x="413.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="170.0" width="10.1" height="10.1" style="animation:c0 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="170.0" width="10.1" height="10.1" style="animation:c1 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="170.0" width="10.1" height="10.1" style="animation:c2 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="170.0" width="10.1" height="10.1" style="animation:c3 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="170.0" width="10.1" height="10.1" style="animation:c4 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="168.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="170.0" width="10.1" height="10.1" style="animation:c5 14.58s ease-in-out infinite"/>
+<rect class="node" x="413.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="196.0" width="10.1" height="10.1" style="animation:c6 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="196.0" width="10.1" height="10.1" style="animation:c7 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="196.0" width="10.1" height="10.1" style="animation:c8 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="196.0" width="10.1" height="10.1" style="animation:c9 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="196.0" width="10.1" height="10.1" style="animation:c10 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="194.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="196.0" width="10.1" height="10.1" style="animation:c11 14.58s ease-in-out infinite"/>
+<rect class="node" x="413.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="222.0" width="10.1" height="10.1" style="animation:c12 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="222.0" width="10.1" height="10.1" style="animation:c13 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="222.0" width="10.1" height="10.1" style="animation:c14 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="222.0" width="10.1" height="10.1" style="animation:c15 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="222.0" width="10.1" height="10.1" style="animation:c16 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="220.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="222.0" width="10.1" height="10.1" style="animation:c17 14.58s ease-in-out infinite"/>
+<rect class="node" x="413.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="248.0" width="10.1" height="10.1" style="animation:c18 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="248.0" width="10.1" height="10.1" style="animation:c19 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="248.0" width="10.1" height="10.1" style="animation:c20 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="248.0" width="10.1" height="10.1" style="animation:c21 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="248.0" width="10.1" height="10.1" style="animation:c22 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="246.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="248.0" width="10.1" height="10.1" style="animation:c23 14.58s ease-in-out infinite"/>
+<rect class="node" x="413.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="274.0" width="10.1" height="10.1" style="animation:c24 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="274.0" width="10.1" height="10.1" style="animation:c25 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="274.0" width="10.1" height="10.1" style="animation:c26 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="274.0" width="10.1" height="10.1" style="animation:c27 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="274.0" width="10.1" height="10.1" style="animation:c28 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="272.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="274.0" width="10.1" height="10.1" style="animation:c29 14.58s ease-in-out infinite"/>
+<rect class="node" x="413.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="415.0" y="300.0" width="10.1" height="10.1" style="animation:c30 14.58s ease-in-out infinite"/>
+<rect class="node" x="439.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="441.0" y="300.0" width="10.1" height="10.1" style="animation:c31 14.58s ease-in-out infinite"/>
+<rect class="node" x="465.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="467.0" y="300.0" width="10.1" height="10.1" style="animation:c32 14.58s ease-in-out infinite"/>
+<rect class="node" x="491.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="493.0" y="300.0" width="10.1" height="10.1" style="animation:c33 14.58s ease-in-out infinite"/>
+<rect class="node" x="517.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="519.0" y="300.0" width="10.1" height="10.1" style="animation:c34 14.58s ease-in-out infinite"/>
+<rect class="node" x="543.0" y="298.0" width="14" height="14"/>
+<rect class="cell" x="545.0" y="300.0" width="10.1" height="10.1" style="animation:c35 14.58s ease-in-out infinite"/>
+<rect x="578.0" y="172.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 175.0)"/>
+<g transform="rotate(45 581.0 175.0)"><rect class="ver" x="578.0" y="172.0" width="6" height="6" style="animation:v0 14.58s ease-out infinite"/></g>
+<rect x="578.0" y="198.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 201.0)"/>
+<g transform="rotate(45 581.0 201.0)"><rect class="ver" x="578.0" y="198.0" width="6" height="6" style="animation:v1 14.58s ease-out infinite"/></g>
+<rect x="578.0" y="224.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 227.0)"/>
+<g transform="rotate(45 581.0 227.0)"><rect class="ver" x="578.0" y="224.0" width="6" height="6" style="animation:v2 14.58s ease-out infinite"/></g>
+<rect x="578.0" y="250.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 253.0)"/>
+<g transform="rotate(45 581.0 253.0)"><rect class="ver" x="578.0" y="250.0" width="6" height="6" style="animation:v3 14.58s ease-out infinite"/></g>
+<rect x="578.0" y="276.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 279.0)"/>
+<g transform="rotate(45 581.0 279.0)"><rect class="ver" x="578.0" y="276.0" width="6" height="6" style="animation:v4 14.58s ease-out infinite"/></g>
+<rect x="578.0" y="302.0" width="6" height="6" fill="none" stroke="#1f2421" stroke-opacity=".25" transform="rotate(45 581.0 305.0)"/>
+<g transform="rotate(45 581.0 305.0)"><rect class="ver" x="578.0" y="302.0" width="6" height="6" style="animation:v5 14.58s ease-out infinite"/></g>
+</svg>

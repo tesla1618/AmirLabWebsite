@@ -36,7 +36,7 @@ export function SegmentedControl({
     <div
       aria-label={ariaLabel}
       className={cn(
-        "grid w-fit max-w-full grid-flow-col auto-cols-[minmax(max-content,1fr)] rounded-control border border-line bg-surface-subtle p-[3px]",
+        "grid w-fit max-w-full grid-flow-col auto-cols-[minmax(max-content,1fr)] overflow-hidden rounded-control border border-line-strong bg-surface",
         loading && loadingPlaceholder(true, "control"),
       )}
       data-placeholder={loading ? "control" : undefined}
@@ -48,12 +48,10 @@ export function SegmentedControl({
           <button
             aria-checked={selected}
             className={cn(
-              "min-h-9 cursor-pointer whitespace-nowrap rounded-control border-0 px-[.7rem] py-2 text-xs font-semibold text-ink-muted transition-[background,color,box-shadow] duration-[140ms] focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--brand)_14%,transparent)] disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
+              "min-h-9 cursor-pointer whitespace-nowrap border-0 border-l border-line px-[.7rem] py-2 text-xs font-semibold text-ink-muted first:border-l-0 transition-[background,color,box-shadow] duration-[140ms] focus-visible:z-10 focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
               !selected &&
-                "bg-transparent hover:bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] hover:text-ink",
+                "bg-transparent hover:bg-surface-subtle hover:text-ink",
               selected && activeToneClass[option.tone ?? "brand"],
-              selected &&
-                "shadow-[0_2px_10px_color-mix(in_srgb,var(--ink)_10%,transparent)]",
             )}
             disabled={disabled || loading}
             key={option.value}

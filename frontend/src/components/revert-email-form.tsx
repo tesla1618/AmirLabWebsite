@@ -71,7 +71,7 @@ export function RevertEmailForm() {
 
   if (reverted) {
     return (
-      <div className="mt-8 grid gap-5 rounded-panel border border-line bg-surface p-6">
+      <div className="mt-8 grid gap-5 border-y border-line-strong py-5">
         <p className="m-0 text-sm leading-6 text-ink-muted">
           The pending change was cancelled or the previous login email was
           restored. If the change had completed, all sessions were signed out.
@@ -87,7 +87,7 @@ export function RevertEmailForm() {
   }
 
   return (
-    <div className="mt-8 grid gap-5 rounded-panel border border-line bg-surface p-6">
+    <div className="mt-8 grid gap-5 border-y border-line-strong py-5">
       <p className="m-0 text-sm leading-6 text-ink-muted">
         Confirming will restore the previous login email and sign out every
         active session for the account.

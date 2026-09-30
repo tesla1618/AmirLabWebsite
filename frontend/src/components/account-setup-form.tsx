@@ -43,9 +43,9 @@ export function AccountSetupForm({ token }: { token?: string }) {
 
   if (!token) {
     return (
-      <div className="rounded-panel border border-line bg-surface">
+      <div className="grid gap-4 border-y border-line-strong py-5">
         <p
-          className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted rounded-panel bg-danger-soft p-[.8rem] text-danger"
+          className="m-0 border-l-[3px] border-danger bg-danger-soft px-[.8rem] py-3 text-[.82rem] leading-[1.5] text-danger"
           role="alert"
         >
           This account setup link is missing its token.
@@ -57,7 +57,7 @@ export function AccountSetupForm({ token }: { token?: string }) {
 
   return (
     <form
-      className="grid gap-[1.2rem] rounded-panel border border-line bg-surface p-[clamp(1rem,3vw,1.5rem)]"
+      className="mt-8 grid gap-[1.2rem] border-y border-line-strong py-5"
       onSubmit={submit}
     >
       <div>
@@ -86,7 +86,7 @@ export function AccountSetupForm({ token }: { token?: string }) {
       />
       {error ? (
         <p
-          className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted rounded-panel bg-danger-soft p-[.8rem] text-danger"
+          className="m-0 border-l-[3px] border-danger bg-danger-soft px-[.8rem] py-3 text-[.82rem] leading-[1.5] text-danger"
           role="alert"
         >
           {error}

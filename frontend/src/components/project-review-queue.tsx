@@ -12,6 +12,11 @@ import { CheckboxControl } from "@/components/ui/checkbox-control";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { useReviewIssues } from "@/lib/use-review-issues";
+import {
+  WorkspaceCollection,
+  WorkspaceHero,
+  WorkspaceRow,
+} from "@/components/ui/workspace-surface";
 import { useNotifications } from "@/components/notification-provider";
 import type { ReviewIssue } from "@/lib/review-issues";
 import {
@@ -189,23 +194,16 @@ export function ProjectReviewQueue() {
 
   return (
     <section className="grid min-w-0 gap-4">
-      <div className="flex items-center justify-between gap-4 rounded-panel border border-line bg-surface p-5 max-[640px]:flex-col max-[640px]:items-start">
-        <div>
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
-            Review queue
-          </p>
-          <h2 className="mt-[.35rem] font-serif text-[clamp(1.5rem,2.6vw,2.2rem)] font-normal leading-[1.05]">
-            Project change moderation
-          </h2>
-          <p className="mt-[.55rem] max-w-[720px] text-[.82rem] leading-[1.55] text-ink-muted">
-            Review member-submitted changes to milestones, team records,
-            outputs, resources, and project settings before they publish.
-          </p>
-        </div>
-        <Badge loading={loading}>
-          {loading ? "Loading" : `${items.length} pending`}
-        </Badge>
-      </div>
+      <WorkspaceHero
+        action={
+          <Badge loading={loading}>
+            {loading ? "Loading" : `${items.length} pending`}
+          </Badge>
+        }
+        description="Review member-submitted changes to milestones, team records, outputs, resources, and project settings before they publish."
+        eyebrow="Review queue"
+        title="Project change moderation"
+      />
 
       {loading || items.length ? (
         <BulkReviewBar
@@ -233,7 +231,7 @@ export function ProjectReviewQueue() {
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-4" data-loading={loading || undefined}>
+      <WorkspaceCollection data-loading={loading || undefined}>
         {error && !items.length && !loading ? (
           <StatePanel
             action={{ label: "Retry", onClick: () => void load() }}
@@ -248,8 +246,8 @@ export function ProjectReviewQueue() {
               ? Array.from({ length: 4 }, () => undefined)
               : items
             ).map((item, index) => (
-              <article
-                className="relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4 rounded-panel border border-line bg-surface p-[clamp(1rem,2vw,1.4rem)] pr-10 max-[720px]:grid-cols-[auto_minmax(0,1fr)]"
+              <WorkspaceRow
+                className="relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4 bg-transparent p-[clamp(1rem,2vw,1.4rem)] pr-10 max-[720px]:grid-cols-[auto_minmax(0,1fr)]"
                 key={item?.id ?? `project-review-loading-${index}`}
               >
                 {item ? <ReviewIssueStamp issue={issuesFor(item)[0]} /> : null}
@@ -284,7 +282,7 @@ export function ProjectReviewQueue() {
                   </span>
                   <h2
                     className={cn(
-                      "font-serif text-[clamp(1.35rem,2.4vw,2.1rem)] font-[430] leading-[1.08] [overflow-wrap:anywhere]",
+                      "font-sans text-[clamp(1.35rem,2.4vw,2.1rem)] font-[430] leading-[1.08] [overflow-wrap:anywhere]",
                       loadingPlaceholder(loading, "text", "long"),
                     )}
                     data-placeholder="text"
@@ -393,7 +391,7 @@ export function ProjectReviewQueue() {
                   }
                   successTitle="Project review saved"
                 />
-              </article>
+              </WorkspaceRow>
             ))
           : null}
 
@@ -405,7 +403,7 @@ export function ProjectReviewQueue() {
             variant="empty"
           />
         ) : null}
-      </div>
+      </WorkspaceCollection>
     </section>
   );
 }
@@ -426,7 +424,7 @@ function ProjectChangePreview({
 
   if (kind === "ARCHIVE") {
     return (
-      <div className="rounded-panel border border-danger/25 bg-danger-soft p-4 text-[.82rem] leading-[1.55] text-danger">
+      <div className="border border-danger/25 bg-danger-soft p-4 text-[.82rem] leading-[1.55] text-danger">
         Archive this project and remove its public project page.
       </div>
     );

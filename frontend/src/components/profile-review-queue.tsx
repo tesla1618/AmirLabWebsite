@@ -2,21 +2,13 @@
 
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
-import { useRouter } from "next/navigation";
 import { useDeferredValue, useEffect, useState } from "react";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import type { PaginatedResponse, ProfileEditRequest } from "@/lib/types";
 import { profileValuesEqual } from "@/lib/profile-changes";
 import { PaginationControls } from "@/components/pagination-controls";
 import { StatePanel } from "@/components/state-panel";
-import {
-  DataTable,
-  DataTableCard,
-  DataTableCell,
-  DataTableHeadCell,
-  DataTableRow,
-  DataTableShell,
-} from "@/components/ui/data-table";
+import { DataTableShell } from "@/components/ui/data-table";
 import { ToolbarSearchField } from "@/components/ui/toolbar-search-field";
 import { SelectControl } from "@/components/ui/select-control";
 import { FormField } from "@/components/ui/form-field";
@@ -30,9 +22,14 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import type { ReviewIssue } from "@/lib/review-issues";
+import {
+  ReviewSplit,
+  WorkspaceRuleBand,
+} from "@/components/ui/workspace-surface";
+import { ProfileReviewDetail } from "@/components/profile-review-detail";
+import { useReviewSelection } from "@/lib/use-review-selection";
 
 export function ProfileReviewQueue() {
-  const router = useRouter();
   const { refreshUnreadCount } = useNotifications();
   const [result, setResult] = useState<PaginatedResponse<ProfileEditRequest>>();
   const [page, setPage] = useState(1);
@@ -83,6 +80,30 @@ export function ProfileReviewQueue() {
   const selectedRequests = (result?.items ?? []).filter(({ id }) =>
     bulk.isSelected(id),
   );
+  const items = result?.items ?? [];
+  const initialLoading = loading && !result;
+  const { selectedId, select } = useReviewSelection(
+    "/workspace/profile-reviews",
+    {
+      firstId: items[0]?.id,
+      ready: !loading,
+      viewKey: `${page}|${deferredSearch}|${sort}`,
+    },
+  );
+  const outsideQueue = Boolean(
+    selectedId && result && !items.some(({ id }) => id === selectedId),
+  );
+
+  function openNextAfterDecision() {
+    const index = items.findIndex(({ id }) => id === selectedId);
+    const next =
+      index >= 0 ? (items[index + 1] ?? items[index - 1]) : undefined;
+    select(next?.id);
+    setLoading(true);
+    if (items.length === 1 && page > 1) setPage((current) => current - 1);
+    else setReload((current) => current + 1);
+  }
+
   const issuesFor = (request: ProfileEditRequest) => [
     ...(request.reviewIssues ?? []),
     ...(actionIssues[request.id] ?? []),
@@ -162,6 +183,7 @@ export function ProfileReviewQueue() {
       method: "POST",
     });
     bulk.clear();
+    select(undefined);
     setLoading(true);
     if (selectedRequests.length === (result?.items.length ?? 0) && page > 1)
       setPage((current) => current - 1);
@@ -175,12 +197,10 @@ export function ProfileReviewQueue() {
     setSearch("");
     setPage(1);
   };
-  const openReview = (id: string) =>
-    router.push(`/workspace/profile-reviews/${id}`);
 
   return (
     <DataTableShell>
-      <div className="grid min-w-0 grid-cols-[minmax(220px,1fr)_minmax(160px,.7fr)_auto] items-end gap-[.8rem] rounded-panel border border-line bg-surface p-4 max-[760px]:grid-cols-1">
+      <WorkspaceRuleBand contentClassName="grid min-w-0 grid-cols-[minmax(220px,1fr)_minmax(160px,.7fr)_auto] items-end gap-[.8rem] px-[var(--workspace-gutter)] py-3.5 max-[760px]:grid-cols-1 max-[640px]:px-4">
         <ToolbarSearchField
           id="profile-review-search"
           label="Search"
@@ -211,7 +231,7 @@ export function ProfileReviewQueue() {
         <ButtonControl disabled={!filtered} onClick={clear} variant="secondary">
           Clear
         </ButtonControl>
-      </div>
+      </WorkspaceRuleBand>
 
       {loading || result?.items.length ? (
         <BulkReviewBar
@@ -240,6 +260,7 @@ export function ProfileReviewQueue() {
       ) : null}
       {error && !result ? (
         <StatePanel
+          frame="workspace"
           action={{
             label: "Retry",
             onClick: () => {
@@ -252,164 +273,64 @@ export function ProfileReviewQueue() {
           variant="error"
         />
       ) : loading || result?.items.length ? (
-        <>
-          <DataTableCard data-loading={loading || undefined}>
-            <DataTable>
-              <thead>
-                <tr>
-                  <DataTableHeadCell className="w-[48px]">
-                    Select
-                  </DataTableHeadCell>
-                  <DataTableHeadCell>Member</DataTableHeadCell>
-                  <DataTableHeadCell>Changed fields</DataTableHeadCell>
-                  <DataTableHeadCell>Submitted</DataTableHeadCell>
-                  <DataTableHeadCell className="w-[48px]">
-                    <span className="sr-only">Attention</span>
-                  </DataTableHeadCell>
-                </tr>
-              </thead>
-              <tbody>
-                {(loading && !result?.items.length
+        <ReviewSplit
+          detail={
+            <>
+              {outsideQueue ? (
+                <p className="m-0 font-mono text-[.62rem] tracking-[.08em] text-ink-muted uppercase">
+                  Opened from a link · not in the current queue view
+                </p>
+              ) : null}
+              <ProfileReviewDetail
+                id={selectedId}
+                key={selectedId ?? "loading"}
+                onDecided={openNextAfterDecision}
+              />
+            </>
+          }
+          dimQueue={loading && Boolean(result)}
+          queue={
+            <>
+              <div className="grid min-w-0 gap-3 border-b border-line px-[var(--workspace-gutter)] py-4">
+                <p className="m-0 font-[var(--font-sans)] text-[.75rem] font-extrabold tracking-[.12em] text-brand uppercase">
+                  Review queue
+                </p>
+                <PaginationControls
+                  loading={loading}
+                  onPageChange={(nextPage) => {
+                    setLoading(true);
+                    setPage(nextPage);
+                  }}
+                  page={page}
+                  pageSize={result?.pageSize ?? 10}
+                  total={result?.total}
+                  totalPages={result?.totalPages ?? 1}
+                />
+              </div>
+              <div data-loading={initialLoading || undefined}>
+                {(initialLoading
                   ? Array.from({ length: 5 }, () => undefined)
-                  : (result?.items ?? [])
+                  : items
                 ).map((request, row) => (
-                  <DataTableRow
-                    aria-disabled={loading || !request}
-                    clickable
+                  <ProfileQueueRow
+                    checked={request ? bulk.isSelected(request.id) : false}
+                    issues={request ? issuesFor(request) : []}
                     key={request?.id ?? `profile-review-loading-${row}`}
-                    onClick={() => request && openReview(request.id)}
-                    onKeyDown={(event) => {
-                      if (
-                        request &&
-                        (event.key === "Enter" || event.key === " ")
-                      ) {
-                        event.preventDefault();
-                        openReview(request.id);
-                      }
-                    }}
-                    role="link"
-                    tabIndex={loading ? -1 : 0}
-                  >
-                    <DataTableCell
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    >
-                      {request ? (
-                        <CheckboxControl
-                          ariaLabel={`Select ${request.person.fullName} profile review`}
-                          checked={bulk.isSelected(request.id)}
-                          className="gap-0"
-                          id={`profile-review-select-${request.id}`}
-                          onCheckedChange={(checked) =>
-                            bulk.toggle(request.id, checked)
-                          }
-                        />
-                      ) : (
-                        <span
-                          className={loadingPlaceholder(true, "control")}
-                          data-placeholder="control"
-                        />
-                      )}
-                    </DataTableCell>
-                    <DataTableCell>
-                      <strong
-                        className={cn(
-                          "block",
-                          loadingPlaceholder(loading, "text", "long"),
-                        )}
-                        data-placeholder="text"
-                        data-placeholder-width="long"
-                      >
-                        {request?.person.fullName ?? "Loading member"}
-                      </strong>
-                      <div className="mt-[.28rem] flex min-h-5 flex-wrap items-center gap-2 text-[.72rem]">
-                        {!request ? (
-                          <span
-                            className={loadingPlaceholder(
-                              true,
-                              "label",
-                              "medium",
-                            )}
-                            data-placeholder="label"
-                            data-placeholder-width="medium"
-                          >
-                            Loading submitted profile
-                          </span>
-                        ) : (
-                          <span className="text-ink-muted">
-                            Profile changes
-                          </span>
-                        )}
-                        {request ? (
-                          reviewIssue(issuesFor(request)) ? (
-                            <SemanticStatus
-                              loading={loading}
-                              tone={
-                                reviewIssue(issuesFor(request))?.tone ?? "error"
-                              }
-                            >
-                              {reviewIssue(issuesFor(request))?.message}
-                            </SemanticStatus>
-                          ) : null
-                        ) : null}
-                      </div>
-                    </DataTableCell>
-                    <DataTableCell>
-                      {request ? (
-                        `${profileChangeCount(request)} fields`
-                      ) : (
-                        <span
-                          className={loadingPlaceholder(true, "value", "short")}
-                          data-placeholder="value"
-                          data-placeholder-width="short"
-                        >
-                          0 fields
-                        </span>
-                      )}
-                    </DataTableCell>
-                    <DataTableCell className="font-mono text-[.7rem] text-ink-muted">
-                      <time
-                        className={loadingPlaceholder(
-                          loading,
-                          "label",
-                          "medium",
-                        )}
-                        data-placeholder="label"
-                        data-placeholder-width="medium"
-                        dateTime={request?.submittedAt}
-                      >
-                        {request?.submittedAt
-                          ? new Date(request.submittedAt).toLocaleDateString()
-                          : "Loading date"}
-                      </time>
-                    </DataTableCell>
-                    <DataTableCell className="relative w-[48px] p-0">
-                      {request ? (
-                        <ReviewIssueStamp
-                          className="right-2 top-1/2 -translate-y-1/2"
-                          issue={issuesFor(request)[0]}
-                        />
-                      ) : null}
-                    </DataTableCell>
-                  </DataTableRow>
+                    onCheckedChange={(checked) =>
+                      request && bulk.toggle(request.id, checked)
+                    }
+                    onSelect={() => request && select(request.id)}
+                    request={request}
+                    selected={Boolean(request && request.id === selectedId)}
+                  />
                 ))}
-              </tbody>
-            </DataTable>
-          </DataTableCard>
-          <PaginationControls
-            loading={loading}
-            onPageChange={(nextPage) => {
-              setLoading(true);
-              setPage(nextPage);
-            }}
-            page={result?.page ?? page}
-            pageSize={result?.pageSize ?? 10}
-            total={result?.total ?? 0}
-            totalPages={result?.totalPages ?? 1}
-          />
-        </>
+              </div>
+            </>
+          }
+        />
       ) : (
         <StatePanel
+          frame="workspace"
           action={
             filtered ? { label: "Clear search", onClick: clear } : undefined
           }
@@ -427,6 +348,88 @@ export function ProfileReviewQueue() {
         />
       )}
     </DataTableShell>
+  );
+}
+
+function ProfileQueueRow({
+  checked,
+  issues,
+  onCheckedChange,
+  onSelect,
+  request,
+  selected,
+}: {
+  checked: boolean;
+  issues: ReviewIssue[];
+  onCheckedChange: (checked: boolean) => void;
+  onSelect: () => void;
+  request?: ProfileEditRequest;
+  selected: boolean;
+}) {
+  const loading = !request;
+  const issue = reviewIssue(issues);
+  return (
+    <div
+      className={cn(
+        "relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-stretch border-b border-line transition-colors last:border-b-0",
+        selected ? "bg-brand-soft" : "hover:bg-surface-subtle",
+      )}
+    >
+      <div className="grid place-items-center pr-2 pl-[var(--workspace-gutter)]">
+        {request ? (
+          <CheckboxControl
+            ariaLabel={`Select ${request.person.fullName} profile review`}
+            checked={checked}
+            className="gap-0"
+            id={`profile-review-select-${request.id}`}
+            onCheckedChange={onCheckedChange}
+          />
+        ) : (
+          <span
+            className={loadingPlaceholder(true, "control")}
+            data-placeholder="control"
+          />
+        )}
+      </div>
+      <button
+        aria-current={selected || undefined}
+        className="grid min-w-0 cursor-pointer gap-[.3rem] border-0 bg-transparent py-3.5 pr-10 text-left disabled:cursor-default"
+        disabled={loading}
+        onClick={onSelect}
+        type="button"
+      >
+        <strong
+          className={cn(
+            "block truncate text-[.86rem] font-medium",
+            loadingPlaceholder(loading, "text", "long"),
+          )}
+          data-placeholder="text"
+          data-placeholder-width="long"
+        >
+          {request?.person.fullName ?? "Loading member"}
+        </strong>
+        <span
+          className={cn(
+            "font-mono text-[.64rem] text-ink-muted",
+            loadingPlaceholder(loading, "label", "medium"),
+          )}
+          data-placeholder="label"
+          data-placeholder-width="medium"
+        >
+          {request
+            ? `${profileChangeCount(request)} fields · ${new Date(request.submittedAt).toLocaleDateString()}`
+            : "0 fields · loading date"}
+        </span>
+        {issue ? (
+          <SemanticStatus tone={issue.tone ?? "error"}>
+            {issue.message}
+          </SemanticStatus>
+        ) : null}
+      </button>
+      {request ? (
+        <ReviewIssueStamp className="top-2 right-2" issue={issues[0]} />
+      ) : null}
+    </div>
   );
 }
 

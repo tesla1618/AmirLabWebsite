@@ -28,6 +28,10 @@ import { SelectControl } from "@/components/ui/select-control";
 import { apiRequest } from "@/lib/client-api";
 import { StatePanel } from "@/components/state-panel";
 import { cn } from "@/lib/cn";
+import {
+  WorkspaceCollection,
+  WorkspaceRow,
+} from "@/components/ui/workspace-surface";
 
 interface WorkspaceProject {
   researchItemId: string;
@@ -127,7 +131,7 @@ export function ProjectIndex() {
   }, [reload]);
   return (
     <div className="grid min-w-0">
-      <div className="grid">
+      <WorkspaceCollection>
         {error && !projects.length && !loading ? (
           <StatePanel
             action={{
@@ -154,103 +158,109 @@ export function ProjectIndex() {
                 )
               : projects
             ).map((project, index) => (
-              <Link
-                aria-disabled={loading}
-                className="grid grid-cols-[minmax(0,1fr)_220px_auto] items-center gap-8 border-b border-line px-2 py-[1.6rem] hover:bg-brand-faint max-[640px]:grid-cols-1"
-                data-loading={loading || undefined}
-                href={
-                  loading
-                    ? "#"
-                    : `/workspace/projects/${project.researchItemId}`
-                }
+              <WorkspaceRow
+                className="hover:bg-surface-subtle"
                 key={project.researchItemId || `project-loading-${index}`}
-                tabIndex={loading ? -1 : undefined}
               >
-                <div>
-                  <span
-                    className={cn(
-                      "font-mono text-[.61rem] text-ink-muted uppercase",
-                      loadingPlaceholder(loading, "label", "medium"),
-                    )}
-                    data-placeholder={loading ? "label" : undefined}
-                    data-placeholder-width="medium"
-                  >
-                    {project.researchItem.reviewStatus === "ARCHIVED"
-                      ? "ARCHIVED"
-                      : (project.status?.replaceAll("_", " ") ?? "Project")}
-                  </span>
-                  <h2
-                    className={cn(
-                      "my-1 font-serif text-[1.7rem] font-normal",
-                      loadingPlaceholder(loading, "text", "long"),
-                    )}
-                    data-placeholder={loading ? "text" : undefined}
-                    data-placeholder-width="long"
-                  >
-                    {project.researchItem.title ?? "Loading project"}
-                  </h2>
-                  <p
-                    className={cn(
-                      "m-0 text-[.76rem] text-ink-muted",
-                      loadingPlaceholder(loading, "text", "full"),
-                    )}
-                    data-placeholder={loading ? "text" : undefined}
-                    data-placeholder-width="full"
-                  >
-                    {project.researchItem.summary ??
-                      project.objective ??
-                      "Loading project summary"}
-                  </p>
-                </div>
-                <div className="grid gap-[.45rem]">
-                  <strong
-                    className={cn(
-                      "font-serif text-[1.8rem] font-normal",
-                      loadingPlaceholder(loading, "value"),
-                    )}
-                    data-placeholder={loading ? "value" : undefined}
-                  >
-                    {project.progress}%
-                  </strong>
-                  <svg
-                    aria-hidden="true"
-                    className="h-[3px] w-full"
-                    preserveAspectRatio="none"
-                    viewBox="0 0 100 3"
-                  >
-                    <rect className="fill-line" height="3" width="100" />
-                    <rect
-                      className="fill-brand"
-                      height="3"
-                      width={loading ? 40 : project.progress}
-                    />
-                  </svg>
-                  <small
-                    className={cn(
-                      "font-mono text-[.61rem] text-ink-muted uppercase",
-                      loadingPlaceholder(loading, "label", "long"),
-                    )}
-                    data-placeholder={loading ? "label" : undefined}
-                    data-placeholder-width="long"
-                  >
-                    {project.milestones.length} milestones ·{" "}
-                    {project.memberships.length} members
-                  </small>
-                </div>
-                <ArrowUpRight
-                  className={loading ? "opacity-[.12]" : undefined}
-                  data-loading-icon={loading ? "true" : undefined}
-                  size={19}
-                />
-              </Link>
+                <Link
+                  aria-disabled={loading}
+                  className="grid grid-cols-[minmax(0,1fr)_190px_auto] items-center gap-6 py-[.95rem] max-[700px]:grid-cols-1 max-[700px]:gap-3"
+                  data-loading={loading || undefined}
+                  href={
+                    loading
+                      ? "#"
+                      : `/workspace/projects/${project.researchItemId}`
+                  }
+                  tabIndex={loading ? -1 : undefined}
+                >
+                  <div>
+                    <span
+                      className={cn(
+                        "font-mono text-[.61rem] text-ink-muted uppercase",
+                        loadingPlaceholder(loading, "label", "medium"),
+                      )}
+                      data-placeholder={loading ? "label" : undefined}
+                      data-placeholder-width="medium"
+                    >
+                      {project.researchItem.reviewStatus === "ARCHIVED"
+                        ? "ARCHIVED"
+                        : (project.status?.replaceAll("_", " ") ?? "Project")}
+                    </span>
+                    <h2
+                      className={cn(
+                        "my-[.22rem] font-sans text-[1.03rem] font-medium leading-[1.3]",
+                        loadingPlaceholder(loading, "text", "long"),
+                      )}
+                      data-placeholder={loading ? "text" : undefined}
+                      data-placeholder-width="long"
+                    >
+                      {project.researchItem.title ?? "Loading project"}
+                    </h2>
+                    <p
+                      className={cn(
+                        "m-0 max-w-[680px] text-[.72rem] leading-[1.45] text-ink-muted",
+                        loadingPlaceholder(loading, "text", "full"),
+                      )}
+                      data-placeholder={loading ? "text" : undefined}
+                      data-placeholder-width="full"
+                    >
+                      {project.researchItem.summary ??
+                        project.objective ??
+                        "Loading project summary"}
+                    </p>
+                  </div>
+                  <div className="grid gap-[.45rem]">
+                    <strong
+                      className={cn(
+                        "font-mono text-[1.18rem] font-medium",
+                        loadingPlaceholder(loading, "value"),
+                      )}
+                      data-placeholder={loading ? "value" : undefined}
+                    >
+                      {project.progress}%
+                    </strong>
+                    <svg
+                      aria-hidden="true"
+                      className="h-[3px] w-full"
+                      preserveAspectRatio="none"
+                      viewBox="0 0 100 3"
+                    >
+                      <rect className="fill-line" height="3" width="100" />
+                      <rect
+                        className="fill-brand"
+                        height="3"
+                        width={loading ? 40 : project.progress}
+                      />
+                    </svg>
+                    <small
+                      className={cn(
+                        "font-mono text-[.61rem] text-ink-muted uppercase",
+                        loadingPlaceholder(loading, "label", "long"),
+                      )}
+                      data-placeholder={loading ? "label" : undefined}
+                      data-placeholder-width="long"
+                    >
+                      {project.milestones.length} milestones ·{" "}
+                      {project.memberships.length} members
+                    </small>
+                  </div>
+                  <ArrowUpRight
+                    className={loading ? "opacity-[.12]" : undefined}
+                    data-loading-icon={loading ? "true" : undefined}
+                    size={19}
+                  />
+                </Link>
+              </WorkspaceRow>
             ))
           : null}
         {!loading && !projects.length && !error ? (
-          <p className="py-12 text-ink-muted">
-            No project workspaces are assigned to this account yet.
-          </p>
+          <StatePanel
+            body="Create a project or assign this account to an existing workspace."
+            title="No project workspaces are assigned to this account yet"
+            variant="empty"
+          />
         ) : null}
-      </div>
+      </WorkspaceCollection>
     </div>
   );
 }
@@ -397,7 +407,7 @@ export function ProjectManager({ id }: { id: string }) {
       {archived ? (
         <section
           aria-label="Archived project notice"
-          className="mb-4 flex min-h-20 items-center justify-between gap-5 border border-[#9a6500] border-l-[7px] bg-[#f3c64e] px-5 py-4 text-[#211800] shadow-[0_2px_0_rgba(33,24,0,.12)] max-[640px]:items-start max-[640px]:flex-col"
+          className="mb-4 flex min-h-20 items-center justify-between gap-5 border border-warning border-l-4 bg-warning-soft px-5 py-4 text-warning max-[640px]:items-start max-[640px]:flex-col"
           role="status"
         >
           <div className="flex items-start gap-3">
@@ -431,7 +441,7 @@ export function ProjectManager({ id }: { id: string }) {
         </Link>
         {currentProject.publicPageEnabled ? (
           <Link
-            className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-[.55rem] rounded-control border border-line-strong bg-transparent px-[.9rem] py-[.62rem] text-[.78rem] font-semibold hover:bg-brand-faint"
+            className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-[.55rem] rounded-control border border-line-strong bg-transparent px-[.9rem] py-[.62rem] text-[.78rem] font-semibold hover:bg-surface-subtle"
             href={`/projects/${currentProject.researchItem.slug}`}
           >
             Preview public page <ArrowUpRight size={15} />
@@ -448,7 +458,7 @@ export function ProjectManager({ id }: { id: string }) {
           </p>
           <h1
             className={cn(
-              "my-[.25rem] mb-[.55rem] break-words font-serif text-[clamp(2.1rem,4vw,3.5rem)] leading-none font-medium tracking-[-.04em]",
+              "my-[.25rem] mb-[.55rem] break-words font-sans text-[clamp(2.1rem,4vw,3.5rem)] leading-none font-medium tracking-[-.04em]",
               loadingPlaceholder(loadingProject, "text", "long"),
             )}
             data-placeholder={loadingProject ? "text" : undefined}
@@ -537,7 +547,7 @@ export function ProjectManager({ id }: { id: string }) {
         </div>
         <button
           className={cn(
-            "flex cursor-pointer items-center gap-[.35rem] border-0 bg-transparent px-[.8rem] py-[.65rem] text-[.67rem] font-semibold whitespace-nowrap text-brand hover:bg-brand-faint max-[900px]:col-span-full max-[900px]:border-t max-[900px]:border-line max-[640px]:col-auto",
+            "flex cursor-pointer items-center gap-[.35rem] border-0 bg-transparent px-[.8rem] py-[.65rem] text-[.67rem] font-semibold whitespace-nowrap text-brand hover:bg-surface-subtle max-[900px]:col-span-full max-[900px]:border-t max-[900px]:border-line max-[640px]:col-auto",
             loadingPlaceholder(loadingProject, "control"),
           )}
           data-placeholder={loadingProject ? "control" : undefined}
@@ -593,7 +603,7 @@ export function ProjectManager({ id }: { id: string }) {
           </p>
           <h2
             className={cn(
-              "my-[.2rem] font-serif text-[1.6rem] font-normal",
+              "my-[.2rem] font-sans text-[1.6rem] font-normal",
               loadingPlaceholder(loadingProject, "text", "medium"),
             )}
             data-placeholder={loadingProject ? "text" : undefined}
@@ -796,7 +806,7 @@ function Overview({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Project record
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Overview
         </h2>
       </header>
@@ -840,7 +850,7 @@ function Overview({
             <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
               Review queue
             </p>
-            <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.3rem,2.5vw,1.8rem)] font-normal">
+            <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.3rem,2.5vw,1.8rem)] font-normal">
               Pending review
             </h2>
           </header>
@@ -865,7 +875,7 @@ function Overview({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Scope
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Research objectives
         </h2>
       </header>
@@ -881,7 +891,7 @@ function Overview({
           <li className="border-t border-line p-4" key={item.id}>
             <strong
               className={cn(
-                "mt-[.3rem] block font-serif text-[1.1rem]",
+                "mt-[.3rem] block font-sans text-[1.1rem]",
                 loadingPlaceholder(loading, "text", "long"),
               )}
               data-placeholder={loading ? "text" : undefined}
@@ -951,7 +961,7 @@ function Tasks({
           <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
             Operational work
           </p>
-          <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+          <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
             Tasks
           </h2>
         </div>
@@ -960,7 +970,7 @@ function Tasks({
         </span>
       </header>
       <form
-        className="grid grid-cols-[minmax(180px,1fr)_minmax(150px,.65fr)_minmax(130px,.45fr)_auto] items-end gap-4 rounded-[3px] border border-line bg-surface p-[1.2rem] max-[900px]:grid-cols-1"
+        className="grid grid-cols-[minmax(180px,1fr)_minmax(150px,.65fr)_minmax(130px,.45fr)_auto] items-end gap-4 border-y border-line-strong bg-transparent p-[1.2rem] max-[900px]:grid-cols-1"
         onSubmit={createTask}
       >
         <div className="grid gap-[.35rem] text-[.64rem] font-semibold">
@@ -1076,7 +1086,7 @@ function Tasks({
               />
               <button
                 aria-label={`Delete ${task.title}`}
-                className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-ink-muted hover:bg-danger-soft hover:text-danger"
+                className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink-muted hover:bg-danger-soft hover:text-danger"
                 disabled={busy}
                 onClick={() => remove(task.id)}
                 type="button"
@@ -1140,7 +1150,7 @@ function Timeline({
           <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
             Weighted milestones
           </p>
-          <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+          <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
             Progress model
           </h2>
         </div>
@@ -1207,7 +1217,7 @@ function Timeline({
             </label>
             <button
               aria-label="Remove milestone"
-              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-ink-muted hover:bg-danger-soft hover:text-danger"
+              className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink-muted hover:bg-danger-soft hover:text-danger"
               onClick={() =>
                 setItems((current) =>
                   current.filter((_, itemIndex) => itemIndex !== index),
@@ -1266,11 +1276,11 @@ function Updates({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Project activity
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Post an update
         </h2>
       </header>
-      <div className="grid grid-cols-2 gap-4 rounded-[3px] border border-line bg-surface p-[1.2rem] max-[640px]:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 border-y border-line-strong bg-transparent p-[1.2rem] max-[640px]:grid-cols-1">
         <InputControl
           placeholder="Update title"
           value={title}
@@ -1312,7 +1322,7 @@ function Updates({
               <span className="font-mono text-[.58rem] text-ink-faint uppercase">
                 {item.status}
               </span>
-              <h3 className="my-1 font-serif text-[1.2rem] font-normal">
+              <h3 className="my-1 font-sans text-[1.2rem] font-normal">
                 {item.title}
               </h3>
               <p className="text-[.75rem] leading-[1.55] text-ink-muted">
@@ -1363,7 +1373,7 @@ function People({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Contributor access
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Project team
         </h2>
       </header>
@@ -1387,7 +1397,7 @@ function People({
         ))}
       </div>
       <form
-        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] rounded-[3px] border border-line bg-surface p-4 max-[640px]:grid-cols-1"
+        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] border-y border-line-strong bg-transparent p-4 max-[640px]:grid-cols-1"
         onSubmit={(event) => {
           event.preventDefault();
           save({
@@ -1481,7 +1491,7 @@ function Outputs({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Connected records
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Research outputs
         </h2>
       </header>
@@ -1514,7 +1524,7 @@ function Outputs({
         ))}
       </div>
       <form
-        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] rounded-[3px] border border-line bg-surface p-4 max-[640px]:grid-cols-1"
+        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] border-y border-line-strong bg-transparent p-4 max-[640px]:grid-cols-1"
         onSubmit={(event) => {
           event.preventDefault();
           output({ outputId });
@@ -1558,7 +1568,7 @@ function Outputs({
         </ButtonControl>
       </form>
       <form
-        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] rounded-[3px] border border-line bg-surface p-4 max-[640px]:grid-cols-1"
+        className="grid grid-cols-[minmax(200px,1fr)_minmax(130px,.35fr)_auto] items-end gap-[.8rem] border-y border-line-strong bg-transparent p-4 max-[640px]:grid-cols-1"
         onSubmit={(event) => {
           event.preventDefault();
           resource({ label, url, kind: "LINK" });
@@ -1616,12 +1626,12 @@ function Settings({
         <p className="mb-[.42rem] font-mono text-[.61rem] font-semibold tracking-[.11em] text-brand uppercase">
           Project configuration
         </p>
-        <h2 className="mt-[.4rem] mb-0 font-serif text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
+        <h2 className="mt-[.4rem] mb-0 font-sans text-[clamp(1.6rem,3vw,2.3rem)] font-normal">
           Settings
         </h2>
       </header>
       <form
-        className="grid grid-cols-2 gap-4 rounded-[3px] border border-line bg-surface p-[1.2rem] max-[640px]:grid-cols-1"
+        className="grid grid-cols-2 gap-4 border-y border-line-strong bg-transparent p-[1.2rem] max-[640px]:grid-cols-1"
         onSubmit={(event) => {
           event.preventDefault();
           save({
@@ -1688,7 +1698,7 @@ function Settings({
         </ButtonControl>
       </form>
       {project.researchItem.reviewStatus !== "ARCHIVED" ? (
-        <div className="flex items-center justify-between rounded-[3px] border border-[#efcccc] bg-danger-soft p-4 max-[640px]:items-stretch max-[640px]:flex-col max-[640px]:gap-3">
+        <div className="flex items-center justify-between border border-danger/35 bg-danger-soft p-4 max-[640px]:items-stretch max-[640px]:flex-col max-[640px]:gap-3">
           <div>
             <strong>Archive project</strong>
             <p className="m-0 text-[.75rem] leading-[1.55] text-ink-muted">

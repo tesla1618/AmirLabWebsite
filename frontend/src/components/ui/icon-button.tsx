@@ -37,7 +37,7 @@ export const IconButton = forwardRef<
     <button
       ref={ref}
       className={cn(
-        "inline-flex shrink-0 cursor-pointer items-center justify-center p-0 text-ink-muted transition-colors duration-[140ms] hover:text-brand disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+        "inline-flex shrink-0 cursor-pointer items-center justify-center p-0 text-ink-muted transition-[background,color,box-shadow] duration-[140ms] hover:text-brand focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
         sizeClass[size],
         shape === "round" ? "rounded-full" : "rounded-control",
         variant === "bordered"

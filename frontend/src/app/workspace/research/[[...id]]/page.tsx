@@ -1,15 +1,11 @@
 import { WorkspacePageShell } from "@/components/workspace-page-shell";
 import { ResearchReviewQueue } from "@/components/research-review-queue";
 
-export default async function ResearchReviewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+/** `/workspace/research` and `/workspace/research/{id}` are one review page. */
+export default function ResearchReviewPage() {
   return (
     <WorkspacePageShell>
-      <ResearchReviewQueue selectedId={id} />
+      <ResearchReviewQueue />
     </WorkspacePageShell>
   );
 }

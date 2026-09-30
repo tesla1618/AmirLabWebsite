@@ -12,6 +12,7 @@ const expect = (condition, message) => {
 const globals = read("src/app/globals.css");
 const brand = read("src/components/brand-mark.tsx");
 const review = read("src/components/research-review-queue.tsx");
+const surface = read("src/components/ui/workspace-surface.tsx");
 const login = read("src/components/login-form.tsx");
 const changePassword = read("src/components/change-password-panel.tsx");
 const forgotPasswordPage = read("src/app/forgot-password/page.tsx");
@@ -43,12 +44,18 @@ expect(
   review.includes('pageSize: "10"'),
   "Research review queue must use 10 records per page.",
 );
+// Review queues share one master/detail card (ReviewSplit): both panes use
+// the same sticky, internally scrolling pane class.
+const reviewPaneClass =
+  /const reviewPane =\s*"([^"]*)"/.exec(surface)?.[1] ?? "";
 expect(
-  (review.match(/sticky top-\[88px\]/g) ?? []).length >= 2,
+  review.includes("<ReviewSplit") &&
+    (surface.match(/cn\(\s*reviewPane,/g) ?? []).length >= 2 &&
+    reviewPaneClass.includes("sticky top-[88px]"),
   "Both review queue and detail panes must stay sticky on desktop.",
 );
 expect(
-  review.includes("overflow-y-auto"),
+  reviewPaneClass.includes("overflow-y-auto"),
   "Review queue/detail panes must scroll internally.",
 );
 expect(

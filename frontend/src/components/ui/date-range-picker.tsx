@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { formControlClass } from "./form-controls";
 
 interface DateRangePickerProps {
   from: string;
@@ -53,19 +54,13 @@ export function DateRangePicker({ from, onChange, to }: DateRangePickerProps) {
       selectingRef.current = Boolean(draftStartRef.current);
       return;
     }
-    const start = draftStartRef.current;
-    if (start) {
-      selectingRef.current = false;
-      commitRange(start, draftEndRef.current ?? start);
-      setOpen(false);
-    }
+    selectingRef.current = false;
   }
 
   function startSelection(day: Date) {
     if (selectingRef.current && draftStartRef.current) {
       selectingRef.current = false;
-      commitRange(draftStartRef.current, day);
-      setOpen(false);
+      updateDraft(draftStartRef.current, day);
       return;
     }
 
@@ -93,8 +88,7 @@ export function DateRangePicker({ from, onChange, to }: DateRangePickerProps) {
       updateDraft(day, undefined);
       return;
     }
-    commitRange(draftStart, day);
-    setOpen(false);
+    updateDraft(draftStart, day);
   }
 
   function clearRange() {
@@ -118,7 +112,10 @@ export function DateRangePicker({ from, onChange, to }: DateRangePickerProps) {
       open={open}
     >
       <Popover.Trigger
-        className="inline-flex h-[var(--control-height)] min-h-[var(--control-height)] w-full min-w-[220px] cursor-pointer items-center justify-center gap-[.55rem] whitespace-nowrap rounded-control border border-line bg-surface px-[.8rem] py-0 text-[.82rem] text-ink transition-[border-color,box-shadow,background] duration-150 hover:border-[color-mix(in_srgb,var(--brand)_42%,var(--line))] data-[state=open]:border-brand focus-visible:border-brand focus-visible:shadow-[var(--focus-ring)] motion-reduce:transition-none"
+        className={cn(
+          formControlClass,
+          "inline-flex min-w-[220px] cursor-pointer items-center justify-center gap-[.55rem] whitespace-nowrap",
+        )}
         type="button"
       >
         <CalendarDays
@@ -131,32 +128,42 @@ export function DateRangePicker({ from, onChange, to }: DateRangePickerProps) {
       <Popover.Portal>
         <Popover.Content
           align="end"
-          className="z-[100] grid w-[min(680px,calc(100vw-2rem))] gap-[.9rem] rounded-[4px] border border-line bg-surface p-4 shadow-[0_24px_60px_color-mix(in_srgb,var(--brand-hover)_16%,transparent)] max-[720px]:w-[min(360px,calc(100vw-2rem))]"
+          className="z-[100] grid w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-control border border-line-strong bg-canvas shadow-[var(--shadow-float)] max-[720px]:w-[min(360px,calc(100vw-2rem))]"
           sideOffset={8}
         >
-          <div className="flex items-center justify-end">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 border-b border-line px-4 py-3 max-[720px]:grid-cols-2">
+            <DateSummary label="Start date" value={draftStart} />
+            <span className="pb-[.45rem] font-mono text-[.65rem] text-ink-faint max-[720px]:hidden">
+              TO
+            </span>
+            <DateSummary label="End date" value={draftEnd} />
+          </div>
+          <div className="flex items-center justify-between border-b border-line px-3 py-2">
             <button
               aria-label="Previous month"
               onClick={() =>
                 setVisibleMonth((current) => addMonths(current, -1))
               }
-              className="inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink hover:bg-brand-soft hover:text-brand"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-brand focus-visible:shadow-[var(--focus-ring)]"
               type="button"
             >
-              <ChevronLeft aria-hidden="true" size={16} />
+              <ChevronLeft aria-hidden="true" size={15} />
             </button>
+            <span className="font-mono text-[.58rem] tracking-[.08em] text-ink-faint uppercase">
+              Choose a start and end date
+            </span>
             <button
               aria-label="Next month"
               onClick={() =>
                 setVisibleMonth((current) => addMonths(current, 1))
               }
-              className="inline-flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink hover:bg-brand-soft hover:text-brand"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-brand focus-visible:shadow-[var(--focus-ring)]"
               type="button"
             >
-              <ChevronRight aria-hidden="true" size={16} />
+              <ChevronRight aria-hidden="true" size={15} />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-6 max-[720px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-x-5 p-4 max-[720px]:grid-cols-1 max-[720px]:gap-y-5">
             {[visibleMonth, addMonths(visibleMonth, 1)].map((month) => (
               <MonthView
                 draftEnd={draftEnd}
@@ -169,30 +176,58 @@ export function DateRangePicker({ from, onChange, to }: DateRangePickerProps) {
               />
             ))}
           </div>
-          <div className="flex items-center justify-between border-t border-line pt-[.7rem]">
+          <div className="flex items-center justify-between border-t border-line px-4 py-3">
             <button
-              className="inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-control border-0 bg-transparent px-[.65rem] py-[.35rem] text-[.78rem] text-brand hover:bg-brand-soft"
+              className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface px-3 text-[.72rem] text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-ink"
               onClick={clearRange}
               type="button"
             >
               Clear
             </button>
-            <button
-              className="inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-control border-0 bg-transparent px-[.65rem] py-[.35rem] text-[.78rem] text-brand hover:bg-brand-soft"
-              onClick={() => {
-                const today = new Date();
-                setVisibleMonth(startOfMonth(today));
-                commitRange(today, today);
-                setOpen(false);
-              }}
-              type="button"
-            >
-              Today
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-control border border-line bg-surface px-3 text-[.72rem] text-ink-muted hover:border-line-strong hover:bg-surface-subtle hover:text-ink"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex min-h-8 cursor-pointer items-center justify-center rounded-control border border-brand bg-brand px-3 text-[.72rem] font-semibold text-on-accent hover:bg-brand-hover disabled:cursor-not-allowed disabled:border-line disabled:bg-surface-subtle disabled:text-ink-faint"
+                disabled={!draftStart || !draftEnd}
+                onClick={() => {
+                  if (!draftStart || !draftEnd) return;
+                  commitRange(draftStart, draftEnd);
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                Apply range
+              </button>
+            </div>
           </div>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+function DateSummary({ label, value }: { label: string; value?: Date }) {
+  return (
+    <div className="grid gap-1">
+      <span className="font-mono text-[.52rem] tracking-[.08em] text-ink-faint uppercase">
+        {label}
+      </span>
+      <strong className="min-h-5 text-[.76rem] font-medium text-ink">
+        {value
+          ? value.toLocaleDateString("en-US", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "Not selected"}
+      </strong>
+    </div>
   );
 }
 
@@ -218,8 +253,8 @@ function MonthView({
       : [draftStart, draftEnd];
 
   return (
-    <section className="grid gap-[.8rem]">
-      <h3 className="m-0 text-center text-[.9rem] font-semibold">
+    <section className="grid gap-2">
+      <h3 className="m-0 text-center text-[.78rem] font-semibold">
         {month.toLocaleDateString("en", { month: "long", year: "numeric" })}
       </h3>
       <div className="grid grid-cols-7">
@@ -232,20 +267,21 @@ function MonthView({
           </span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-y-1">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {days.map((day, index) => {
           const outside = day.getMonth() !== month.getMonth();
           if (outside) {
             return (
               <span
                 aria-hidden="true"
-                className="relative flex h-[38px] select-none items-center justify-center text-[.78rem]"
+                className="relative flex h-8 select-none items-center justify-center text-[.72rem]"
                 key={toIsoDate(day)}
               />
             );
           }
           const selectedStart = Boolean(rangeStart && sameDay(day, rangeStart));
           const selectedEnd = Boolean(rangeEnd && sameDay(day, rangeEnd));
+          const today = sameDay(day, new Date());
           const inRange = Boolean(
             rangeStart && rangeEnd && day > rangeStart && day < rangeEnd,
           );
@@ -255,15 +291,24 @@ function MonthView({
           const rowStart = index % 7 === 0;
           const rowEnd = index % 7 === 6;
           const className = cn(
-            "relative flex h-[38px] cursor-pointer select-none items-center justify-center border-0 bg-transparent text-[.78rem] text-ink hover:text-brand",
-            inRange && "!bg-surface-subtle",
-            inRange && rowStart && "rounded-l-full",
-            inRange && rowEnd && "rounded-r-full",
+            "relative flex h-8 cursor-pointer select-none items-center justify-center border-0 bg-transparent text-[.72rem] text-ink hover:bg-surface-subtle hover:text-brand focus-visible:z-30 focus-visible:shadow-[var(--focus-ring)]",
+            inRange && "!bg-brand-faint text-brand-strong",
+            inRange && rowStart && "rounded-l-control",
+            inRange && rowEnd && "rounded-r-control",
             (selectedStart || selectedEnd) &&
               "font-semibold text-on-accent hover:text-on-accent",
+            today &&
+              !selectedStart &&
+              !selectedEnd &&
+              "ring-1 ring-inset ring-brand",
           );
           return (
             <button
+              aria-label={`${day.toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}${selectedStart ? ", range start" : selectedEnd ? ", range end" : inRange ? ", included in range" : today ? ", today" : ""}`}
               aria-pressed={selectedStart || selectedEnd || inRange}
               className={className}
               key={toIsoDate(day)}
@@ -282,19 +327,19 @@ function MonthView({
               {hasRange && selectedStart && !rowEnd ? (
                 <span
                   aria-hidden="true"
-                  className="absolute inset-y-0 left-1/2 right-0 z-0 bg-surface-subtle"
+                  className="absolute inset-y-0 right-0 left-1/2 z-0 bg-brand-faint"
                 />
               ) : null}
               {hasRange && selectedEnd && !rowStart ? (
                 <span
                   aria-hidden="true"
-                  className="absolute inset-y-0 left-0 right-1/2 z-0 bg-surface-subtle"
+                  className="absolute inset-y-0 right-1/2 left-0 z-0 bg-brand-faint"
                 />
               ) : null}
               {selectedStart || selectedEnd ? (
                 <span
                   aria-hidden="true"
-                  className="absolute left-1/2 top-1/2 z-10 h-[38px] w-[38px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand"
+                  className="absolute top-1/2 left-1/2 z-10 h-8 w-full -translate-x-1/2 -translate-y-1/2 rounded-control bg-brand"
                 />
               ) : null}
               <span className="relative z-20">{day.getDate()}</span>

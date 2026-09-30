@@ -3,6 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { PersonPortrait } from "@/components/person-portrait";
+import { StatePanel } from "@/components/state-panel";
+import {
+  FramedCollection,
+  FramedRow,
+  PublicSection,
+} from "@/components/ui/public-shell";
 import { getDepartment } from "@/lib/api";
 
 export async function generateMetadata({
@@ -21,11 +27,13 @@ export default async function DepartmentPage({
 }) {
   const department = await getDepartment((await params).slug);
   if (!department) notFound();
-  const shell =
-    "mx-auto w-full max-w-[var(--public-wide)] px-[clamp(1rem,3.2vw,3rem)] max-[640px]:px-4";
   return (
-    <main className="pb-[clamp(4rem,7vw,6rem)]">
-      <header className={`${shell} min-h-0 py-[clamp(2.5rem,5vw,4rem)]`}>
+    <div className="pb-[clamp(4rem,7vw,6rem)]">
+      <PublicSection
+        as="header"
+        boundary="bottom"
+        contentClassName="min-h-0 py-[clamp(2.5rem,5vw,4rem)]"
+      >
         <Link
           className="mb-16 inline-flex items-center gap-[.4rem] text-[.76rem] text-brand"
           href="/departments"
@@ -42,8 +50,8 @@ export default async function DepartmentPage({
         <p className="max-w-[800px] text-[1.05rem] leading-[1.75] text-ink-muted">
           {department.description}
         </p>
-      </header>
-      <section className={`${shell} border-t border-line py-16`}>
+      </PublicSection>
+      <PublicSection contentClassName="py-16">
         <div className="mb-10 flex items-end justify-between">
           <div>
             <p className="mb-[.65rem] font-mono text-[.66rem] font-semibold tracking-[.105em] text-brand uppercase">
@@ -57,35 +65,43 @@ export default async function DepartmentPage({
             {department.people.length} members
           </span>
         </div>
-        <div className="grid grid-cols-4 gap-px max-[800px]:grid-cols-2 max-[520px]:grid-cols-1">
-          {department.people.map(({ person, role }) => (
-            <Link
-              className="-mt-px -ml-px grid border border-line bg-surface p-5"
-              href={`/people/${person.slug}`}
-              key={person.id}
-            >
-              <PersonPortrait person={person} variant="department" />
-              <span className="mt-4 font-mono text-[.6rem] text-brand uppercase">
-                {role === "HEAD"
-                  ? "Department head"
-                  : role === "LEAD"
-                    ? "Lead researcher"
-                    : person.rank?.replaceAll("_", " ")}
-              </span>
-              <h3 className="mt-[.3rem] mb-[.8rem] font-serif text-[1.2rem] font-[450]">
-                {person.fullName}
-              </h3>
-              <ArrowUpRight
-                aria-hidden="true"
-                className="justify-self-end text-brand"
-                size={16}
-              />
-            </Link>
-          ))}
-        </div>
-      </section>
+        {department.people.length ? (
+          <div className="grid grid-cols-4 gap-px max-[800px]:grid-cols-2 max-[520px]:grid-cols-1">
+            {department.people.map(({ person, role }) => (
+              <Link
+                className="-mt-px -ml-px grid border border-line bg-surface p-5"
+                href={`/people/${person.slug}`}
+                key={person.id}
+              >
+                <PersonPortrait person={person} variant="department" />
+                <span className="mt-4 font-mono text-[.6rem] text-brand uppercase">
+                  {role === "HEAD"
+                    ? "Department head"
+                    : role === "LEAD"
+                      ? "Lead researcher"
+                      : person.rank?.replaceAll("_", " ")}
+                </span>
+                <h3 className="mt-[.3rem] mb-[.8rem] font-serif text-[1.2rem] font-[450]">
+                  {person.fullName}
+                </h3>
+                <ArrowUpRight
+                  aria-hidden="true"
+                  className="justify-self-end text-brand"
+                  size={16}
+                />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <StatePanel
+            body="Department members will appear here when the roster is published."
+            frame
+            title="No members listed yet"
+          />
+        )}
+      </PublicSection>
       {department.researchItems?.length ? (
-        <section className={`${shell} border-t border-line py-16`}>
+        <PublicSection boundary="top" contentClassName="py-16">
           <div className="mb-10 flex items-end justify-between">
             <div>
               <p className="mb-[.65rem] font-mono text-[.66rem] font-semibold tracking-[.105em] text-brand uppercase">
@@ -96,7 +112,7 @@ export default async function DepartmentPage({
               </h2>
             </div>
           </div>
-          <div className="grid border-t border-line">
+          <FramedCollection className="grid" topRule>
             {department.researchItems.map(({ researchItem }) => {
               const content = (
                 <>
@@ -116,38 +132,41 @@ export default async function DepartmentPage({
               );
               if (researchItem.type === "PROJECT")
                 return (
-                  <Link
-                    className="grid grid-cols-[100px_1fr_auto] items-center border-b border-line py-4"
-                    href={`/projects/${researchItem.slug}`}
-                    key={researchItem.id}
-                  >
-                    {content}
-                  </Link>
+                  <FramedRow key={researchItem.id}>
+                    <Link
+                      className="grid grid-cols-[100px_1fr_auto] items-center px-[var(--public-gutter)] py-4"
+                      href={`/projects/${researchItem.slug}`}
+                    >
+                      {content}
+                    </Link>
+                  </FramedRow>
                 );
               if (researchItem.canonicalUrl)
                 return (
-                  <a
-                    className="grid grid-cols-[100px_1fr_auto] items-center border-b border-line py-4"
-                    href={researchItem.canonicalUrl}
-                    key={researchItem.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {content}
-                  </a>
+                  <FramedRow key={researchItem.id}>
+                    <a
+                      className="grid grid-cols-[100px_1fr_auto] items-center px-[var(--public-gutter)] py-4"
+                      href={researchItem.canonicalUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {content}
+                    </a>
+                  </FramedRow>
                 );
               return (
-                <article
-                  className="grid grid-cols-[100px_1fr_auto] items-center border-b border-line py-4"
+                <FramedRow
+                  as="article"
+                  className="grid grid-cols-[100px_1fr_auto] items-center px-[var(--public-gutter)] py-4"
                   key={researchItem.id}
                 >
                   {content}
-                </article>
+                </FramedRow>
               );
             })}
-          </div>
-        </section>
+          </FramedCollection>
+        </PublicSection>
       ) : null}
-    </main>
+    </div>
   );
 }

@@ -2,23 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDown, ArrowRight, MoveUpRight } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, MoveUpRight } from "lucide-react";
 import { PersonPortrait } from "@/components/person-portrait";
-import { MotionScene } from "@/components/motion-scene";
+import { FrameRule, publicShellClass } from "@/components/ui/public-shell";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
+import { peopleGroup, type PeopleGroup } from "@/lib/people-groups";
 import type { Person } from "@/lib/types";
-
-type PeopleGroup =
-  | "founder"
-  | "advisor"
-  | "lead"
-  | "senior"
-  | "researcher"
-  | "assistant"
-  | "intern"
-  | "alumni"
-  | "other";
 
 const PEOPLE_SECTION_PREVIEW_LIMIT = 6;
 const GROUPS: Array<{ key: PeopleGroup; title: string }> = [
@@ -30,20 +20,6 @@ const GROUPS: Array<{ key: PeopleGroup; title: string }> = [
   { key: "intern", title: "Research Interns" },
   { key: "other", title: "Members" },
 ];
-
-function peopleGroup(person: Person): PeopleGroup {
-  const role = person.roleTitle?.toLowerCase() ?? "";
-  if (role.includes("founder") || role.includes("research director"))
-    return "founder";
-  if (person.isAlumni) return "alumni";
-  if (person.rank === "ADVISOR" || role.includes("advisor")) return "advisor";
-  if (person.rank === "LEAD_RESEARCHER") return "lead";
-  if (person.rank === "SENIOR_RESEARCHER") return "senior";
-  if (person.rank === "RESEARCHER") return "researcher";
-  if (person.rank === "RESEARCH_ASSISTANT") return "assistant";
-  if (person.rank === "RESEARCH_INTERN") return "intern";
-  return "other";
-}
 
 function personRole(person: Person): string {
   return (
@@ -74,49 +50,25 @@ export function PeopleDirectory({
   return (
     <div
       aria-busy={loading || undefined}
-      className="mx-auto w-full max-w-[1280px] px-8 max-[640px]:px-4 grid gap-[3.6rem] pb-20 pt-[2.1rem] max-[720px]:gap-[2.6rem] max-[720px]:pt-[1.4rem]"
+      className="grid w-full pb-20"
       data-loading={loading || undefined}
     >
       {founder || loading ? (
         <Founder loading={loading} person={founder} />
       ) : null}
 
-      <section
-        className="grid min-h-[220px] grid-cols-[minmax(0,1fr)_minmax(320px,.9fr)] items-stretch border-y border-line-strong max-[1000px]:grid-cols-1 max-[720px]:min-h-0"
-        aria-label="About the research team"
-      >
-        <div className="grid content-center py-[1.7rem] pr-8 max-[720px]:pr-0">
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
-            Research team
-          </p>
-          <h2 className="m-0 max-w-[720px] font-serif text-[clamp(1.7rem,3vw,2.7rem)] font-medium tracking-[-.035em]">
-            Researchers from different fields and institutions.
-          </h2>
-          <p className="mt-3 max-w-[680px] text-[.8rem] leading-[1.65] text-ink-muted">
-            Browse current members by research role. Individual profiles include
-            available affiliations, research interests, publications, and
-            project contributions.
-          </p>
-        </div>
-        <div className="grid min-w-0 items-center overflow-hidden border-l border-line py-2 pl-[1.4rem] max-[1000px]:border-l-0 max-[1000px]:border-t max-[1000px]:pl-0">
-          <MotionScene
-            className="h-[210px] w-full opacity-[.74] max-[720px]:h-[170px]"
-            variant="people"
-          />
-        </div>
-      </section>
-
-      {groups.map(({ key, title, members }) => (
+      {groups.map(({ key, title, members }, index) => (
         <PeopleSection
           key={key}
           loading={loading}
           members={members}
+          showRule={index > 0 || Boolean(founder || loading)}
           title={title}
         />
       ))}
 
       {!loading && alumni.length ? (
-        <PeopleSection members={alumni} title="Alumni" />
+        <PeopleSection members={alumni} showRule title="Alumni" />
       ) : null}
     </div>
   );
@@ -131,92 +83,103 @@ function Founder({
 }) {
   const href = person ? `/people/${person.slug}` : "/people";
   return (
-    <section
-      className="border-t border-line-strong pt-[.8rem]"
-      data-loading={loading || undefined}
-    >
-      <PeopleHeading title="Founder & Research Director" />
-      <article className="grid grid-cols-[minmax(220px,320px)_minmax(0,1fr)] items-stretch gap-[clamp(1.8rem,4vw,4rem)] max-[720px]:grid-cols-[120px_minmax(0,1fr)] max-[480px]:grid-cols-1">
-        <Link
-          aria-disabled={loading || undefined}
-          className="max-[480px]:max-w-[180px]"
-          href={href}
-          tabIndex={loading ? -1 : undefined}
-        >
-          <PersonPortrait
-            loading={loading}
-            person={person}
-            priority
-            variant="founder"
-          />
-        </Link>
-        <div className="grid min-w-0 max-w-[760px] content-center">
-          <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
-            Founder & Research Director
-          </p>
-          <h2
-            className={cn(
-              "mb-0 mt-[.15rem] font-serif text-[clamp(2rem,3.8vw,3.6rem)] font-medium leading-[.98] tracking-[-.045em] max-[720px]:text-[clamp(1.65rem,8vw,2.4rem)]",
-              loadingPlaceholder(loading, "text", "long"),
-            )}
-            data-placeholder={loading ? "text" : undefined}
-          >
-            <Link
-              aria-disabled={loading || undefined}
-              href={href}
-              tabIndex={loading ? -1 : undefined}
-            >
-              {person?.fullName ?? "Research director name"}
+    <section className="relative" data-loading={loading || undefined}>
+      <div
+        className={cn(
+          publicShellClass,
+          "pt-[1.2rem] pb-[2.6rem] max-[720px]:pt-[1rem] max-[480px]:pb-[1.8rem]",
+        )}
+      >
+        <PeopleHeading title="Founder & Research Director" />
+        <article className="grid grid-cols-[minmax(180px,240px)_minmax(0,1fr)] items-center gap-[clamp(1.8rem,4vw,4rem)] max-[720px]:grid-cols-[120px_minmax(0,1fr)] max-[480px]:grid-cols-[96px_minmax(0,1fr)] max-[480px]:items-center max-[480px]:gap-4">
+          {loading ? (
+            <div aria-hidden="true" className="min-w-0">
+              <PersonPortrait
+                loading
+                person={person}
+                priority
+                variant="founder"
+              />
+            </div>
+          ) : (
+            <Link className="min-w-0" href={href}>
+              <PersonPortrait
+                loading={loading}
+                person={person}
+                priority
+                variant="founder"
+              />
             </Link>
-          </h2>
-          {loading || person?.roleTitle ? (
-            <p
+          )}
+          <div className="grid min-w-0 max-w-[760px] content-center">
+            <h2
               className={cn(
-                "mt-[.55rem] text-[.85rem] leading-[1.5] text-ink-muted",
-                loadingPlaceholder(loading, "text", "medium"),
-              )}
-              data-placeholder={loading ? "text" : undefined}
-            >
-              {loading ? "Role is loading" : person?.roleTitle}
-            </p>
-          ) : null}
-          {loading || person?.headline ? (
-            <p
-              className={cn(
-                "mt-[.55rem] font-mono text-[.64rem] leading-[1.5] text-ink-muted",
+                "mb-0 mt-[.15rem] font-sans text-[clamp(2rem,3.8vw,3.6rem)] font-medium leading-[.98] tracking-[-.045em] max-[720px]:text-[clamp(1.65rem,8vw,2.4rem)] max-[480px]:text-[clamp(1.35rem,6.5vw,1.7rem)]",
                 loadingPlaceholder(loading, "text", "long"),
               )}
               data-placeholder={loading ? "text" : undefined}
             >
-              {loading ? "Affiliation is loading" : person?.headline}
-            </p>
-          ) : null}
-          {loading || person?.biography ? (
-            <p
-              className={cn(
-                "mt-4 line-clamp-4 max-w-[700px] text-[.82rem] leading-[1.65] text-ink-muted max-[720px]:hidden",
-                loadingPlaceholder(loading, "text", "full"),
+              {loading ? (
+                <span aria-hidden="true">Research director name</span>
+              ) : (
+                <Link href={href}>{person?.fullName}</Link>
               )}
-              data-placeholder={loading ? "text" : undefined}
-            >
-              {loading ? "Biography is loading" : person?.biography}
-            </p>
-          ) : null}
-          {loading ? (
-            <span
-              aria-hidden="true"
-              className="mt-4 h-[.75rem] w-28 bg-surface-subtle"
-            />
-          ) : (
-            <Link
-              className="mt-4 inline-flex w-fit items-center gap-[.45rem] text-[.78rem] font-bold text-brand"
-              href={href}
-            >
-              View full profile <ArrowRight aria-hidden="true" size={16} />
-            </Link>
-          )}
-        </div>
-      </article>
+            </h2>
+            {loading ||
+            (person?.roleTitle &&
+              person.roleTitle.toLowerCase() !==
+                "founder & research director") ? (
+              <p
+                aria-hidden={loading || undefined}
+                className={cn(
+                  "mt-[.55rem] text-[.85rem] leading-[1.5] text-ink-muted",
+                  loadingPlaceholder(loading, "text", "medium"),
+                )}
+                data-placeholder={loading ? "text" : undefined}
+              >
+                {loading ? "Role is loading" : person?.roleTitle}
+              </p>
+            ) : null}
+            {loading || person?.headline ? (
+              <p
+                aria-hidden={loading || undefined}
+                className={cn(
+                  "mt-[.55rem] font-mono text-[.64rem] leading-[1.5] text-ink-muted",
+                  loadingPlaceholder(loading, "text", "long"),
+                )}
+                data-placeholder={loading ? "text" : undefined}
+              >
+                {loading ? "Affiliation is loading" : person?.headline}
+              </p>
+            ) : null}
+            {loading || person?.biography ? (
+              <p
+                aria-hidden={loading || undefined}
+                className={cn(
+                  "mt-4 line-clamp-4 max-w-[700px] text-[.82rem] leading-[1.65] text-ink-muted max-[720px]:hidden",
+                  loadingPlaceholder(loading, "text", "full"),
+                )}
+                data-placeholder={loading ? "text" : undefined}
+              >
+                {loading ? "Biography is loading" : person?.biography}
+              </p>
+            ) : null}
+            {loading ? (
+              <span
+                aria-hidden="true"
+                className="mt-4 h-[.75rem] w-28 bg-surface-subtle"
+              />
+            ) : (
+              <Link
+                className="mt-4 inline-flex w-fit items-center gap-[.45rem] text-[.78rem] font-bold text-brand max-[480px]:mt-3 max-[480px]:text-[.72rem]"
+                href={href}
+              >
+                View full profile <ArrowRight aria-hidden="true" size={16} />
+              </Link>
+            )}
+          </div>
+        </article>
+      </div>
     </section>
   );
 }
@@ -232,7 +195,7 @@ function PeopleHeading({
 }) {
   return (
     <header className="mb-[1.15rem] flex items-baseline justify-between gap-[.8rem]">
-      <h2 className="font-serif text-[clamp(1.55rem,2.3vw,2.25rem)] font-medium tracking-[-.025em]">
+      <h2 className="font-sans text-[clamp(1.55rem,2.3vw,2.25rem)] font-medium tracking-[-.025em]">
         {title}
       </h2>
       {count !== undefined || loading ? (
@@ -243,7 +206,9 @@ function PeopleHeading({
           )}
           data-placeholder={loading ? "value" : undefined}
         >
-          {loading ? "—" : `${count} ${count === 1 ? "member" : "members"}`}
+          <span aria-hidden={loading || undefined}>
+            {loading ? "—" : `${count} ${count === 1 ? "member" : "members"}`}
+          </span>
         </span>
       ) : null}
     </header>
@@ -254,18 +219,25 @@ function PeopleSection({
   members,
   title,
   loading = false,
+  showRule = true,
 }: {
   members: Person[];
   title: string;
   loading?: boolean;
+  showRule?: boolean;
 }) {
   return (
-    <section
-      className="border-t border-line-strong pt-[.8rem]"
-      data-loading={loading || undefined}
-    >
-      <PeopleHeading count={members.length} loading={loading} title={title} />
-      <MemberCollection loading={loading} members={members} />
+    <section className="relative" data-loading={loading || undefined}>
+      {showRule ? <FrameRule edge="top" stroke="dashed" /> : null}
+      <div
+        className={cn(
+          publicShellClass,
+          "pt-[1.3rem] pb-[2.4rem] max-[720px]:pb-[1.8rem]",
+        )}
+      >
+        <PeopleHeading count={members.length} loading={loading} title={title} />
+        <MemberCollection loading={loading} members={members} title={title} />
+      </div>
     </section>
   );
 }
@@ -273,9 +245,11 @@ function PeopleSection({
 function MemberCollection({
   members,
   loading = false,
+  title,
 }: {
   members: Person[];
   loading?: boolean;
+  title: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasMore = !loading && members.length > PEOPLE_SECTION_PREVIEW_LIMIT;
@@ -287,11 +261,18 @@ function MemberCollection({
 
   return (
     <>
-      <div className="grid grid-cols-2 border-t border-line max-[720px]:grid-cols-1">
+      <div className="-mx-[var(--public-gutter)] grid grid-cols-2 border-t border-line max-[720px]:grid-cols-1">
         {visibleMembers.map((person, index) => (
           <Member
             key={person?.id ?? `loading-${index}`}
+            fullWidth={
+              !loading &&
+              (!hasMore || expanded) &&
+              members.length % 2 === 1 &&
+              index === visibleMembers.length - 1
+            }
             loading={loading}
+            groupTitle={title}
             person={person}
             position={index}
           />
@@ -305,7 +286,11 @@ function MemberCollection({
           type="button"
         >
           {expanded ? "Show less" : `See all ${members.length}`}
-          <ArrowDown aria-hidden="true" size={15} />
+          {expanded ? (
+            <ArrowUp aria-hidden="true" size={15} />
+          ) : (
+            <ArrowDown aria-hidden="true" size={15} />
+          )}
         </button>
       ) : null}
     </>
@@ -316,48 +301,56 @@ function Member({
   position,
   person,
   loading = false,
+  groupTitle,
+  fullWidth = false,
 }: {
   position: number;
   person?: Person;
   loading?: boolean;
+  groupTitle: string;
+  fullWidth?: boolean;
 }) {
   const href = person ? `/people/${person.slug}` : "/people";
   const odd = position % 2 === 0;
-  return (
-    <Link
-      aria-disabled={loading || undefined}
-      className={cn(
-        "group grid min-w-0 grid-cols-[66px_minmax(0,1fr)_auto] items-center gap-[.85rem] border-b border-line py-[.82rem] pr-[.9rem] text-inherit no-underline hover:bg-[color-mix(in_srgb,var(--brand-faint)_55%,transparent)] max-[480px]:grid-cols-[56px_minmax(0,1fr)_auto]",
-        odd
-          ? "border-r border-line pr-[1.4rem] max-[720px]:border-r-0 max-[720px]:pr-[.4rem]"
-          : "pl-[1.4rem] max-[720px]:pl-0",
-      )}
-      href={href}
-      tabIndex={loading ? -1 : undefined}
-    >
+  const role = person ? personRole(person) : "Research role";
+  const compactLabel = (value: string) =>
+    value.toLowerCase().replace(/s\b/g, "");
+  const showRole = !person || compactLabel(role) !== compactLabel(groupTitle);
+  const className = cn(
+    "group relative grid min-w-0 grid-cols-[66px_minmax(0,1fr)_auto] items-center gap-[.85rem] border-b border-line px-[var(--public-gutter)] py-[.82rem] text-inherit no-underline max-[480px]:grid-cols-[56px_minmax(0,1fr)_auto]",
+    fullWidth && "col-span-2 max-[720px]:col-span-1",
+    odd && !fullWidth && "border-r border-line max-[720px]:border-r-0",
+  );
+  const content = (
+    <>
       <PersonPortrait loading={loading} person={person} />
       <div className="min-w-0">
         <h3
+          aria-hidden={loading || undefined}
           className={cn(
-            "mb-1 mt-[.08rem] font-serif text-[1.12rem] font-medium leading-[1.2]",
+            "mb-1 mt-[.08rem] font-sans text-[1.02rem] font-medium leading-[1.25] group-hover:text-brand group-hover:underline group-hover:decoration-[.06em] group-hover:underline-offset-4 group-focus-visible:underline",
             loadingPlaceholder(loading, "text", "medium"),
           )}
           data-placeholder={loading ? "text" : undefined}
         >
           {person?.fullName ?? "Research member"}
         </h3>
-        <p
-          className={cn(
-            "m-0 block overflow-hidden text-ellipsis whitespace-nowrap text-[.7rem] leading-[1.4] text-ink-muted",
-            loadingPlaceholder(loading, "text", "short"),
-          )}
-          data-placeholder={loading ? "text" : undefined}
-        >
-          {person ? personRole(person) : "Research role"}
-        </p>
+        {showRole ? (
+          <p
+            aria-hidden={loading || undefined}
+            className={cn(
+              "m-0 block overflow-hidden text-ellipsis whitespace-nowrap text-[.7rem] leading-[1.4] text-ink-muted",
+              loadingPlaceholder(loading, "text", "short"),
+            )}
+            data-placeholder={loading ? "text" : undefined}
+          >
+            {role}
+          </p>
+        ) : null}
         {loading ||
         (person?.headline && person.headline !== person.roleTitle) ? (
           <small
+            aria-hidden={loading || undefined}
             className={cn(
               "mt-[.18rem] block overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[.56rem] leading-[1.4] text-ink-muted",
               loadingPlaceholder(loading, "text", "long"),
@@ -371,12 +364,21 @@ function Member({
       <MoveUpRight
         aria-hidden="true"
         className={cn(
-          "text-ink-faint group-hover:text-brand",
+          "text-ink-faint transition-transform group-hover:translate-x-[2px] group-hover:-translate-y-[2px] group-hover:text-brand",
           loading && "opacity-[.12]",
         )}
         data-loading-icon={loading || undefined}
         size={19}
       />
+    </>
+  );
+  return loading ? (
+    <div aria-hidden="true" className={className}>
+      {content}
+    </div>
+  ) : (
+    <Link className={className} href={href}>
+      {content}
     </Link>
   );
 }

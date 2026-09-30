@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState, type InputHTMLAttributes } from "react";
 import { IconButton } from "./icon-button";
 import { InputControl } from "./form-controls";
+import { FormField } from "./form-field";
 
 type PasswordFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -15,13 +16,7 @@ export function PasswordField({ id, label, ...props }: PasswordFieldProps) {
   const buttonLabel = visible ? "Hide password" : "Show password";
 
   return (
-    <div className="field grid gap-[.38rem]">
-      <label
-        className="font-mono text-[.62rem] font-semibold uppercase tracking-[.045em]"
-        htmlFor={id}
-      >
-        {label}
-      </label>
+    <FormField htmlFor={id} label={label}>
       <div className="relative">
         <InputControl
           className="pr-[3rem]"
@@ -33,7 +28,7 @@ export function PasswordField({ id, label, ...props }: PasswordFieldProps) {
           aria-label={buttonLabel}
           className="absolute right-[.35rem] top-1/2 -translate-y-1/2 text-ink-muted hover:text-brand"
           onClick={() => setVisible((current) => !current)}
-          shape="round"
+          shape="control"
           size="md"
           title={buttonLabel}
           variant="bare"
@@ -45,6 +40,6 @@ export function PasswordField({ id, label, ...props }: PasswordFieldProps) {
           )}
         </IconButton>
       </div>
-    </div>
+    </FormField>
   );
 }

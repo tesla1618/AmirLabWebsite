@@ -13,6 +13,7 @@ import { SelectControl } from "@/components/ui/select-control";
 import { useNotifications } from "@/components/notification-provider";
 import { cn } from "@/lib/cn";
 import { FormField } from "@/components/ui/form-field";
+import { loadingPlaceholder } from "@/lib/loading-style";
 
 type SubmissionState =
   | { kind: "idle" }
@@ -20,7 +21,13 @@ type SubmissionState =
   | { kind: "success"; id: string }
   | { kind: "error"; message: string };
 
-export function ApplicationForm({ positions }: { positions: Position[] }) {
+export function ApplicationForm({
+  positions,
+  loading = false,
+}: {
+  positions: Position[];
+  loading?: boolean;
+}) {
   const { showToast } = useNotifications();
   const [file, setFile] = useState<File>();
   const [parseResult, setParseResult] = useState<ResumeParseResult>();
@@ -100,17 +107,36 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
 
   return (
     <form
-      className="grid gap-4 rounded-panel border border-line bg-surface p-[clamp(1.25rem,3vw,2rem)]"
+      aria-busy={loading || undefined}
+      className="grid gap-4"
       onSubmit={submit}
     >
       <div>
-        <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
+        <p
+          aria-hidden={loading || undefined}
+          className={cn(
+            "m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand",
+            loading && loadingPlaceholder(true, "label", "medium"),
+          )}
+        >
           Apply without an account
         </p>
-        <h2 className="mb-[.7rem] mt-[.65rem] font-serif text-[clamp(2rem,4vw,3rem)] font-medium leading-none tracking-[-.04em]">
+        <h2
+          aria-hidden={loading || undefined}
+          className={cn(
+            "mb-[.7rem] mt-[.65rem] font-sans text-[clamp(2rem,4vw,3rem)] font-medium leading-none tracking-[-.04em]",
+            loading && loadingPlaceholder(true, "text", "medium"),
+          )}
+        >
           Start with your CV
         </h2>
-        <p className="m-0 max-w-[580px] text-[.86rem] leading-[1.6] text-ink-muted">
+        <p
+          aria-hidden={loading || undefined}
+          className={cn(
+            "m-0 max-w-[580px] text-[.86rem] leading-[1.6] text-ink-muted",
+            loading && loadingPlaceholder(true, "text", "long"),
+          )}
+        >
           Choose a role and upload your CV as a PDF. The browser reads the
           document to preview the name, email, phone number, and detected
           sections before you submit.
@@ -119,12 +145,16 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
       <FormField
         htmlFor="positionId"
         label="Position"
-        labelClassName="text-[.78rem] font-semibold tracking-[.04em]"
+        labelClassName={cn(
+          "text-[.78rem] font-semibold tracking-[.04em]",
+          loading && loadingPlaceholder(true, "label", "short"),
+        )}
       >
         <SelectControl
-          disabled={!positions.length}
+          disabled={!positions.length || loading}
           id="positionId"
           name="positionId"
+          loading={loading}
           options={positions.map((position) => ({
             label: position.title,
             value: position.id,
@@ -135,10 +165,16 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
       </FormField>
       <FormField
         label="CV or resume"
-        labelClassName="text-[.78rem] font-semibold tracking-[.04em]"
+        labelClassName={cn(
+          "text-[.78rem] font-semibold tracking-[.04em]",
+          loading && loadingPlaceholder(true, "label", "short"),
+        )}
       >
         <label
-          className="grid min-h-[170px] cursor-pointer place-content-center gap-[.35rem] rounded-panel border border-dashed border-line-strong bg-surface-subtle p-[1.6rem] text-center transition-[background,border-color] duration-[220ms] hover:border-brand-hover hover:bg-brand-soft focus-within:border-brand focus-within:border-solid motion-reduce:transition-none"
+          className={cn(
+            "grid min-h-[170px] cursor-pointer place-content-center gap-[.35rem] rounded-panel border border-dashed border-line-strong bg-surface-subtle p-[1.6rem] text-center transition-[background,border-color] duration-[220ms] hover:border-brand-hover hover:bg-brand-soft focus-within:border-brand focus-within:border-solid motion-reduce:transition-none",
+            loading && loadingPlaceholder(true, "control"),
+          )}
           htmlFor="cv"
         >
           <span className="mx-auto mb-[.45rem] flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-brand">
@@ -152,7 +188,9 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
           </span>
           <FileInputControl
             accept="application/pdf,.pdf"
+            disabled={loading}
             id="cv"
+            loading={loading}
             onChange={(event) => void inspectFile(event.target.files?.[0])}
           />
         </label>
@@ -176,7 +214,12 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
           </p>
         ) : null}
       </FormField>
-      <CheckboxControl id="application-consent" name="consent" required>
+      <CheckboxControl
+        id="application-consent"
+        loading={loading}
+        name="consent"
+        required
+      >
         <span>
           I consent to AmirLab storing this application and CV for recruitment
           review.
@@ -201,11 +244,18 @@ export function ApplicationForm({ positions }: { positions: Position[] }) {
           !parseResult.resume.profile.email ||
           submission.kind === "submitting"
         }
+        loading={loading}
         type="submit"
       >
         Submit application
       </ButtonControl>
-      <p className="-mt-[.3rem] text-[.73rem] leading-[1.5] text-ink-muted">
+      <p
+        aria-hidden={loading || undefined}
+        className={cn(
+          "-mt-[.3rem] text-[.73rem] leading-[1.5] text-ink-muted",
+          loading && loadingPlaceholder(true, "text", "long"),
+        )}
+      >
         The server checks the PDF again after submission. If it cannot read the
         document, the application is rejected with formatting feedback.
       </p>
