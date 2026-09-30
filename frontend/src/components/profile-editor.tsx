@@ -127,6 +127,13 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
   const [editRole, setEditRole] = useState("MEMBER");
   const [editRank, setEditRank] = useState("NONE");
   const [editEmail, setEditEmail] = useState("");
+  const accountRole = userId ? editRole : (user?.role ?? "MEMBER");
+  const moderatorProfile = accountRole === "MODERATOR";
+  const adminProfile = accountRole === "ADMIN";
+  const staffProfile = moderatorProfile || adminProfile;
+  const researchProfile = accountRole === "MEMBER";
+  const managingAccount = Boolean(userId && user?.role === "ADMIN");
+  const showAside = researchProfile || managingAccount;
   const avatarPreview = useMemo(
     () => (avatar ? URL.createObjectURL(avatar) : null),
     [avatar],
@@ -155,7 +162,10 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
                 headline: current.headline,
                 biography: current.biography,
                 phone: current.phone,
-                roleTitle: userId ? current.roleTitle : null,
+                roleTitle:
+                  userId || result.accountRole !== "MEMBER"
+                    ? current.roleTitle
+                    : null,
                 contactAddress: current.contactAddress,
                 expertise: current.expertise,
                 links: (current.links ?? []).map(({ label, type, url }) => ({
@@ -217,39 +227,31 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
     setSaving(true);
     setMessage(undefined);
     const body = new FormData();
-    const accountRole = userId ? editRole : (user?.role ?? "MEMBER");
-    const moderatorProfile = accountRole === "MODERATOR";
-    const adminProfile = accountRole === "ADMIN";
     body.set(
       "profile",
       JSON.stringify(
-        moderatorProfile
+        staffProfile
           ? {
               contactAddress: profile.contactAddress,
               fullName: profile.fullName,
               phone: profile.phone,
+              roleTitle: profile.roleTitle,
             }
-          : adminProfile
-            ? {
-                fullName: profile.fullName,
-              }
-            : {
-                biography: profile.biography,
-                contactAddress: profile.contactAddress,
-                expertise: profile.expertise,
-                fullName: profile.fullName,
-                headline: profile.headline,
-                ...(userId ? { roleTitle: profile.roleTitle } : {}),
-                links: profile.links,
-                phone: profile.phone,
-                sections: profile.sections,
-              },
+          : {
+              biography: profile.biography,
+              contactAddress: profile.contactAddress,
+              expertise: profile.expertise,
+              fullName: profile.fullName,
+              headline: profile.headline,
+              ...(userId ? { roleTitle: profile.roleTitle } : {}),
+              links: profile.links,
+              phone: profile.phone,
+              sections: profile.sections,
+            },
       ),
     );
-    if (!moderatorProfile) {
-      body.set("removeAvatar", String(removeAvatar));
-      if (avatar) body.set("avatar", avatar);
-    }
+    body.set("removeAvatar", String(removeAvatar));
+    if (avatar) body.set("avatar", avatar);
     const endpoint = userId ? `/users/${userId}/profile` : "/profile/me";
 
     let accountUpdated = false;
@@ -345,10 +347,6 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
   }
 
   const pendingAvatarId = record?.draft?.avatarAsset?.id;
-  const accountRole = userId ? editRole : (user?.role ?? "MEMBER");
-  const moderatorProfile = accountRole === "MODERATOR";
-  const adminProfile = accountRole === "ADMIN";
-  const researchProfile = accountRole === "MEMBER";
   const visibleAvatarId = removeAvatar
     ? null
     : (pendingAvatarId ?? record?.profile.avatar?.id);
@@ -378,7 +376,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
   return (
     <form
       aria-busy={editorLoading}
-      className="grid w-full grid-cols-[minmax(0,1fr)_320px] items-start gap-[1.35rem] max-[980px]:grid-cols-1"
+      className="grid w-full grid-cols-1 items-start gap-[1.35rem]"
       data-loading={editorLoading || undefined}
       onSubmit={submit}
     >
@@ -402,8 +400,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
             : "Submit for review"}
         </ButtonControl>
       </header>
-      {!moderatorProfile ? (
-        <section className="relative col-span-full -mx-[var(--workspace-gutter)] flex items-center gap-[1.6rem] border-y border-line-strong bg-transparent px-[var(--workspace-gutter)] py-[1.6rem] max-[640px]:mx-0 max-[640px]:flex-col max-[640px]:items-start max-[640px]:px-4">
+      <section className="relative col-span-full -mx-[var(--workspace-gutter)] flex items-center gap-[1.6rem] border-y border-line-strong bg-transparent px-[var(--workspace-gutter)] py-[1.6rem] max-[640px]:mx-0 max-[640px]:flex-col max-[640px]:items-start max-[640px]:px-4">
           <div
             className={cn(
               "relative flex h-28 w-28 flex-[0_0_112px] items-center justify-center rounded-full border border-dashed border-[color-mix(in_srgb,var(--brand)_36%,transparent)]",
@@ -439,6 +436,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
               <FileInputControl
                 loading={editorLoading}
                 accept="image/jpeg,image/png,image/webp"
+                aria-label="Profile image"
                 name="avatar"
                 onChange={(event) => {
                   setAvatar(event.target.files?.[0]);
@@ -485,26 +483,23 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
             ) : null}
           </div>
         </section>
-      ) : null}
-      <section
+      <div
         className={cn(
-          "relative grid gap-[1.2rem] border-y border-line-strong bg-transparent py-[1.55rem]",
-          adminProfile
-            ? "col-span-full -mx-[var(--workspace-gutter)] px-[var(--workspace-gutter)] max-[640px]:mx-0 max-[640px]:px-4"
-            : "col-start-1 -ml-[var(--workspace-gutter)] pl-[var(--workspace-gutter)] pr-[1.55rem] max-[980px]:col-start-1 max-[640px]:ml-0 max-[640px]:px-4",
+          "grid min-w-0 items-start gap-[1.35rem]",
+          showAside
+            ? "grid-cols-[minmax(0,1fr)_320px] max-[980px]:grid-cols-1"
+            : "grid-cols-1",
         )}
       >
+        <div className="grid min-w-0 gap-[1.2rem]">
+          <section className="relative -ml-[var(--workspace-gutter)] grid gap-[1.2rem] border-y border-line-strong bg-transparent py-[1.55rem] pr-[1.55rem] pl-[var(--workspace-gutter)] max-[640px]:ml-0 max-[640px]:px-4">
         <div className="mb-0 flex items-end justify-between gap-8 border-b border-line pb-[.95rem]">
           <div>
             <p className="m-0 mb-4 font-[var(--font-sans)] text-[.75rem] font-extrabold uppercase tracking-[.12em] text-brand">
               Identity
             </p>
             <h2 className="text-[1.35rem] font-semibold">
-              {adminProfile
-                ? "Account identity"
-                : moderatorProfile
-                  ? "Contact information"
-                  : "Public information"}
+              {staffProfile ? "Staff information" : "Public information"}
             </h2>
           </div>
         </div>
@@ -554,11 +549,12 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
                 />
               </FormField>
             ) : null}
-            {userId && researchProfile ? (
+            {staffProfile || (userId && researchProfile) ? (
               <FormField
                 className="col-span-full"
                 htmlFor="profile-role-title"
-                label="Public role title"
+                label={staffProfile ? "Staff title" : "Public role title"}
+                description={staffProfile ? "Optional staff title." : undefined}
               >
                 <InputControl
                   loading={editorLoading}
@@ -595,7 +591,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
                 />
               </FormField>
             ) : null}
-            {!adminProfile ? (
+            {staffProfile || researchProfile ? (
               <FormField htmlFor="profile-phone" label="Phone">
                 <InputControl
                   loading={editorLoading}
@@ -629,7 +625,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
                 />
               </FormField>
             ) : null}
-            {!adminProfile ? (
+            {staffProfile || researchProfile ? (
               <FormField
                 className="col-span-full"
                 htmlFor="profile-address"
@@ -1052,14 +1048,15 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
         </section>
       ) : null}
 
-      {researchProfile || userId ? (
-        <aside className="sticky top-[152px] col-start-2 row-[3/span_3] grid gap-4 max-[980px]:static max-[980px]:col-start-1 max-[980px]:row-auto max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {userId ? (
-            <section className="col-start-1 grid gap-[1.2rem] border-y border-line-strong bg-transparent p-[1.55rem] max-[980px]:col-start-1">
+      </div>
+      {showAside ? (
+        <aside className="sticky top-[152px] grid min-w-0 gap-4 max-[980px]:static max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
+          {managingAccount ? (
+            <section className="grid gap-[1.2rem] border-y border-line-strong bg-transparent p-[1.55rem]">
               <div className="mb-0 flex items-end justify-between gap-8 border-b border-line pb-[.95rem]">
                 <div>
                   <h2 className="text-[1.35rem] font-semibold">
-                    Role and rank
+                    {researchProfile ? "Role and rank" : "Permission role"}
                   </h2>
                 </div>
               </div>
@@ -1203,6 +1200,7 @@ export function ProfileEditor({ userId }: ProfileEditorProps) {
           ) : null}
         </aside>
       ) : null}
+      </div>
 
       {message ? (
         <p className="m-0 flex items-center gap-[.45rem] text-[.82rem] leading-[1.5] text-ink-muted">

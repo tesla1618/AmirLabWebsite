@@ -18,13 +18,13 @@ const PROFILE_FIELDS = new Set([
   'removeAvatar',
 ]);
 const ADMIN_PROFILE_FIELDS = new Set([...PROFILE_FIELDS, 'roleTitle']);
-const MODERATOR_PROFILE_FIELDS = new Set([
+const STAFF_PROFILE_FIELDS = new Set([
   'fullName',
+  'roleTitle',
   'phone',
   'contactAddress',
+  'removeAvatar',
 ]);
-const GENERAL_ADMIN_PROFILE_FIELDS = new Set(['fullName']);
-
 export type ProfileEditScope = 'ADMIN' | 'RESEARCH' | 'MODERATOR';
 
 export function parseProfilePayload(
@@ -52,45 +52,44 @@ export function parseProfilePayload(
   }
   const scope = opts?.scope ?? 'RESEARCH';
   const editableFields =
-    scope === 'MODERATOR'
-      ? MODERATOR_PROFILE_FIELDS
-      : scope === 'ADMIN'
-        ? GENERAL_ADMIN_PROFILE_FIELDS
-        : opts?.adminFields
-          ? ADMIN_PROFILE_FIELDS
-          : PROFILE_FIELDS;
-  const unsupported = Object.keys(source).find(
-    (key) => !editableFields.has(key),
-  );
+    scope === 'MODERATOR' || scope === 'ADMIN'
+      ? STAFF_PROFILE_FIELDS
+      : opts?.adminFields
+        ? ADMIN_PROFILE_FIELDS
+        : PROFILE_FIELDS;
+  const unsupported = Object.keys(source).find((key) => {
+    if (editableFields.has(key)) return false;
+    // Stored drafts include empty research fields from profilePayloadToJson.
+    // Accept only that normalized shape, never research fields in submissions.
+    if (
+      typeof raw !== 'string' &&
+      (scope === 'MODERATOR' || scope === 'ADMIN')
+    ) {
+      if (key === 'biography' || key === 'headline')
+        return source[key] !== null;
+      if (key === 'expertise' || key === 'links' || key === 'sections') {
+        const value = source[key];
+        return !Array.isArray(value) || value.length !== 0;
+      }
+    }
+    return true;
+  });
   if (unsupported) {
     throw new BadRequestException(`profile.${unsupported} cannot be edited`);
   }
 
-  if (scope === 'MODERATOR') {
+  if (scope === 'MODERATOR' || scope === 'ADMIN') {
     return {
       fullName: requiredText(source.fullName, 'fullName', 2, 120),
       headline: null,
       biography: null,
+      roleTitle: optionalText(source.roleTitle, 'roleTitle', 200),
       phone: optionalText(source.phone, 'phone', 80),
       contactAddress: optionalText(
         source.contactAddress,
         'contactAddress',
         2_000,
       ),
-      expertise: [],
-      links: [],
-      sections: [],
-      removeAvatar: false,
-    };
-  }
-
-  if (scope === 'ADMIN') {
-    return {
-      fullName: requiredText(source.fullName, 'fullName', 2, 120),
-      headline: null,
-      biography: null,
-      phone: null,
-      contactAddress: null,
       expertise: [],
       links: [],
       sections: [],

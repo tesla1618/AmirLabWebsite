@@ -95,6 +95,174 @@ describe('ProfilesService review', () => {
     });
   });
 
+  it('queues moderator shared fields and avatar removal under manual policy', async () => {
+    const request = {
+      avatarAsset: null,
+      id: 'moderator-request-id',
+      payload: {
+        contactAddress: 'Lab office',
+        fullName: 'Lab Moderator',
+        phone: '+880 1000 000000',
+        removeAvatar: true,
+        roleTitle: 'Operations Moderator',
+      },
+      revision: 1,
+      status: ProfileReviewStatus.NEEDS_REVIEW,
+    };
+    const prisma = {
+      person: {
+        findUnique: jest.fn().mockResolvedValue({
+          avatarId: 'existing-avatar',
+          id: 'moderator-person-id',
+          profileEditRequest: null,
+        }),
+      },
+      profileEditRequest: {
+        upsert: jest.fn().mockResolvedValue(request),
+      },
+    };
+    const service = await createProfilesService({
+      assets: { remove: jest.fn() },
+      notifications: {
+        notifyReviewers: jest.fn().mockResolvedValue(undefined),
+      },
+      prisma,
+      profileSync: {},
+      settings: {
+        verification: jest.fn().mockResolvedValue({ profileEdit: 'MANUAL' }),
+      },
+    });
+
+    const result = await service.submit(
+      {
+        profile: JSON.stringify({
+          contactAddress: 'Lab office',
+          fullName: 'Lab Moderator',
+          phone: '+880 1000 000000',
+          roleTitle: 'Operations Moderator',
+        }),
+        removeAvatar: 'true',
+      },
+      {
+        email: 'moderator@example.org',
+        id: 'moderator-id',
+        person: {
+          avatar: null,
+          fullName: 'Lab Moderator',
+          id: 'moderator-person-id',
+          isPublished: true,
+          rank: null,
+          slug: 'lab-moderator',
+        },
+        role: PlatformRole.MODERATOR,
+        status: AccountStatus.ACTIVE,
+      },
+    );
+
+    expect(result).toEqual({ ...request, outcome: 'QUEUED_FOR_REVIEW' });
+    expect(prisma.profileEditRequest.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        create: expect.objectContaining({
+          avatarAssetId: null,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          payload: expect.objectContaining({
+            contactAddress: 'Lab office',
+            fullName: 'Lab Moderator',
+            phone: '+880 1000 000000',
+            removeAvatar: true,
+            roleTitle: 'Operations Moderator',
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('applies moderator shared fields without overwriting research data', async () => {
+    let personUpdateData: Record<string, unknown> | undefined;
+    const transaction = {
+      auditRecord: { create: jest.fn().mockResolvedValue({}) },
+      person: {
+        update: jest.fn((input: { data: Record<string, unknown> }) => {
+          personUpdateData = input.data;
+          return Promise.resolve({});
+        }),
+      },
+      profileEditRequest: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        (callback: (client: typeof transaction) => Promise<void>) =>
+          callback(transaction),
+      ),
+      profileEditRequest: {
+        findUnique: jest.fn().mockResolvedValue({
+          avatarAssetId: null,
+          id: 'moderator-request-id',
+          payload: {
+            biography: null,
+            contactAddress: 'Lab office',
+            expertise: [],
+            fullName: 'Lab Moderator',
+            headline: null,
+            links: [],
+            phone: '+880 1000 000000',
+            removeAvatar: false,
+            roleTitle: 'Operations Moderator',
+            sections: [],
+          },
+          person: {
+            avatarId: 'existing-avatar',
+            user: { role: PlatformRole.MODERATOR },
+            userId: 'moderator-id',
+          },
+          personId: 'moderator-person-id',
+          revision: 1,
+          status: ProfileReviewStatus.NEEDS_REVIEW,
+        }),
+      },
+    };
+    const service = await createProfilesService({
+      assets: { remove: jest.fn() },
+      notifications: { create: jest.fn().mockResolvedValue(undefined) },
+      prisma,
+      profileSync: {
+        normalizePublishedOutputsForPeople: jest
+          .fn()
+          .mockResolvedValue(undefined),
+      },
+      settings: {},
+    });
+
+    await service.review(
+      'moderator-request-id',
+      { revision: 1, status: ProfileReviewStatus.APPROVED },
+      {
+        email: 'admin@example.org',
+        id: 'admin-id',
+        person: null,
+        role: PlatformRole.ADMIN,
+        status: AccountStatus.ACTIVE,
+      },
+    );
+
+    expect(personUpdateData).toEqual({
+      avatarId: 'existing-avatar',
+      contactAddress: 'Lab office',
+      fullName: 'Lab Moderator',
+      isPublished: true,
+      phone: '+880 1000 000000',
+      roleTitle: 'Operations Moderator',
+    });
+    expect(personUpdateData).not.toHaveProperty('biography');
+    expect(personUpdateData).not.toHaveProperty('expertise');
+    expect(personUpdateData).not.toHaveProperty('headline');
+    expect(personUpdateData).not.toHaveProperty('links');
+    expect(personUpdateData).not.toHaveProperty('profileSections');
+  });
+
   it('returns an explicit queued outcome for member profile edits under manual policy', async () => {
     const request = {
       avatarAsset: null,

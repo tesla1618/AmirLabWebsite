@@ -92,7 +92,6 @@ export class ProfilesService {
     });
     if (!person) throw new NotFoundException('Profile not found');
     const scope = profileEditScope(person.user?.role);
-    validateProfileMedia(scope, dto, avatar);
     return this.publishProfile(person.id, dto, actor, avatar, {
       scope,
     });
@@ -129,19 +128,8 @@ export class ProfilesService {
     if (!person) throw new NotFoundException('Profile not found');
 
     const scope = profileEditScope(user.role);
-    validateProfileMedia(scope, dto, avatar);
     const removeAvatar = dto.removeAvatar === 'true';
     const payload = parseProfilePayload(dto.profile, removeAvatar, { scope });
-
-    const uploaded = avatar
-      ? await this.assets.storeAvatar(avatar, user.id)
-      : null;
-    const oldDraftAvatarId = person.profileEditRequest?.avatarAssetId ?? null;
-    const avatarAssetId = uploaded
-      ? uploaded.id
-      : removeAvatar
-        ? null
-        : oldDraftAvatarId;
 
     const verification = await this.settings.verification();
     const publishNow = dto.publishNow === 'true';
@@ -162,6 +150,16 @@ export class ProfilesService {
         skipAuth: !publishNow,
       });
     }
+
+    const uploaded = avatar
+      ? await this.assets.storeAvatar(avatar, user.id)
+      : null;
+    const oldDraftAvatarId = person.profileEditRequest?.avatarAssetId ?? null;
+    const avatarAssetId = uploaded
+      ? uploaded.id
+      : removeAvatar
+        ? null
+        : oldDraftAvatarId;
 
     let request;
     try {
@@ -224,7 +222,6 @@ export class ProfilesService {
     if (!person) throw new NotFoundException('Profile not found');
 
     const scope = opts?.scope ?? profileEditScope(actor.role);
-    validateProfileMedia(scope, dto, avatar);
     const removeAvatar = dto.removeAvatar === 'true';
     const payload = parseProfilePayload(dto.profile, removeAvatar, {
       adminFields: isAdminOverride && scope === 'RESEARCH',
@@ -447,27 +444,18 @@ export class ProfilesService {
               request,
               scope,
               target: {
-                avatarId:
-                  scope === 'ADMIN' || scope === 'RESEARCH'
-                    ? approvedAvatarId
-                    : current.avatarId,
+                avatarId: approvedAvatarId,
                 biography:
                   scope === 'RESEARCH' ? payload.biography : current.biography,
-                contactAddress:
-                  scope === 'MODERATOR' || scope === 'RESEARCH'
-                    ? payload.contactAddress
-                    : current.contactAddress,
+                contactAddress: payload.contactAddress,
                 expertise:
                   scope === 'RESEARCH' ? payload.expertise : current.expertise,
                 fullName: payload.fullName,
                 headline:
                   scope === 'RESEARCH' ? payload.headline : current.headline,
-                phone:
-                  scope === 'MODERATOR' || scope === 'RESEARCH'
-                    ? payload.phone
-                    : current.phone,
+                phone: payload.phone,
                 roleTitle:
-                  scope === 'RESEARCH' && payload.roleTitle !== undefined
+                  payload.roleTitle !== undefined
                     ? payload.roleTitle
                     : current.roleTitle,
               },
@@ -836,17 +824,13 @@ function profileUpdateData(
   avatarId: string | null | undefined,
   scope: ProfileEditScope,
 ): Prisma.PersonUncheckedUpdateInput {
-  if (scope === 'MODERATOR') {
+  if (scope === 'MODERATOR' || scope === 'ADMIN') {
     return {
+      avatarId,
       contactAddress: payload.contactAddress,
       fullName: payload.fullName,
       phone: payload.phone,
-    };
-  }
-  if (scope === 'ADMIN') {
-    return {
-      avatarId,
-      fullName: payload.fullName,
+      roleTitle: payload.roleTitle,
     };
   }
   return {
@@ -966,16 +950,4 @@ function profilePayloadIssue(itemId: string, error: unknown): ReviewIssue {
 function profileEditScope(role: PlatformRole | undefined): ProfileEditScope {
   if (role === PlatformRole.ADMIN) return 'ADMIN';
   return role === PlatformRole.MODERATOR ? 'MODERATOR' : 'RESEARCH';
-}
-
-function validateProfileMedia(
-  scope: ProfileEditScope,
-  dto: SubmitProfileEditDto,
-  avatar?: Express.Multer.File,
-) {
-  if (scope === 'MODERATOR' && (avatar || dto.removeAvatar === 'true')) {
-    throw new BadRequestException(
-      'Moderator profiles do not support public portraits',
-    );
-  }
 }

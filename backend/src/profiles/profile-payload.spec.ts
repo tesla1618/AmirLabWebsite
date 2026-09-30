@@ -3,7 +3,7 @@ import {
   PersonLinkType,
   PersonSectionType,
 } from '../../generated/prisma/enums';
-import { parseProfilePayload } from './profile-payload';
+import { parseProfilePayload, profilePayloadToJson } from './profile-payload';
 
 const profile = {
   fullName: 'Jane Researcher',
@@ -93,6 +93,7 @@ describe('parseProfilePayload', () => {
           contactAddress: 'Lab office',
           fullName: 'Lab Moderator',
           phone: '+880 1000 000000',
+          roleTitle: 'Operations Moderator',
         }),
         false,
         { scope: 'MODERATOR' },
@@ -106,8 +107,22 @@ describe('parseProfilePayload', () => {
       links: [],
       phone: '+880 1000 000000',
       removeAvatar: false,
+      roleTitle: 'Operations Moderator',
       sections: [],
     });
+  });
+
+  it('round-trips moderator avatar removal for review storage', () => {
+    expect(
+      parseProfilePayload(
+        {
+          fullName: 'Lab Moderator',
+          removeAvatar: true,
+        },
+        false,
+        { scope: 'MODERATOR' },
+      ).removeAvatar,
+    ).toBe(true);
   });
 
   it('rejects researcher-only fields for moderator profiles', () => {
@@ -123,19 +138,25 @@ describe('parseProfilePayload', () => {
     ).toThrow('profile.expertise cannot be edited');
   });
 
-  it('accepts only identity fields for administrator profiles', () => {
+  it('accepts shared staff fields for administrator profiles', () => {
     expect(
       parseProfilePayload(
         JSON.stringify({
+          contactAddress: 'Admin office',
           fullName: 'Administrator',
+          phone: '+880 1000 000000',
+          roleTitle: 'Lab Director',
         }),
         true,
         { scope: 'ADMIN' },
       ),
     ).toEqual(
       expect.objectContaining({
+        contactAddress: 'Admin office',
         fullName: 'Administrator',
+        phone: '+880 1000 000000',
         removeAvatar: true,
+        roleTitle: 'Lab Director',
       }),
     );
     expect(() =>
@@ -149,6 +170,48 @@ describe('parseProfilePayload', () => {
       ),
     ).toThrow('profile.expertise cannot be edited');
   });
+
+  describe.each(['ADMIN', 'MODERATOR'] as const)(
+    '%s stored staff drafts',
+    (scope) => {
+      it('round-trips normalized fields and avatar intent for approval', () => {
+        const payload = parseProfilePayload(
+          JSON.stringify({ fullName: 'Staff Member', roleTitle: 'Operations' }),
+          true,
+          { scope },
+        );
+        expect(
+          parseProfilePayload(profilePayloadToJson(payload), false, { scope }),
+        ).toEqual(payload);
+      });
+
+      it.each([
+        ['biography', null, 'Research biography'],
+        ['headline', null, 'Research headline'],
+        ['expertise', [], ['Research']],
+        ['links', [], [{}]],
+        ['sections', [], [{}]],
+      ])(
+        'rejects submitted and nonempty stored %s',
+        (key, empty, populated) => {
+          expect(() =>
+            parseProfilePayload(
+              JSON.stringify({ fullName: 'Staff Member', [key]: empty }),
+              false,
+              { scope },
+            ),
+          ).toThrow(BadRequestException);
+          expect(() =>
+            parseProfilePayload(
+              { fullName: 'Staff Member', [key]: populated },
+              false,
+              { scope },
+            ),
+          ).toThrow(BadRequestException);
+        },
+      );
+    },
+  );
 
   it('rejects executable or non-web profile links', () => {
     expect(() =>
