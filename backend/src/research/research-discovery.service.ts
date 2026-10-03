@@ -1,16 +1,26 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PDFParse } from 'pdf-parse';
 import {
   ContributorMatchSource,
   ContributorMatchStatus,
   NotificationType,
+  PlatformRole,
   PersonLinkType,
   Prisma,
+  ResearchAutomationState,
+  ReviewStatus,
   SourceFetchStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { JobsService } from '../jobs/jobs.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RankingsService } from './rankings.service';
+import {
+  normalizeIdentityText,
+  ResearchProfileSyncService,
+} from './research-profile-sync.service';
+import { SettingsService } from '../settings/settings.service';
 import {
   normalizeOrcid,
   parseHtmlMetadata,
@@ -32,11 +42,16 @@ export const DISCOVERY_JOB = 'DISCOVER_RESEARCH_SOURCE';
 
 @Injectable()
 export class ResearchDiscoveryService implements OnModuleInit {
+  private readonly workerId = `research-discovery:${randomUUID()}`;
+
   constructor(
     private readonly fetcher: SafeSourceFetcher,
     private readonly jobs: JobsService,
     private readonly notifications: NotificationsService,
     private readonly prisma: PrismaService,
+    private readonly profileSync: ResearchProfileSyncService,
+    private readonly rankings: RankingsService,
+    private readonly settings: SettingsService,
   ) {}
 
   onModuleInit(): void {
@@ -57,23 +72,49 @@ export class ResearchDiscoveryService implements OnModuleInit {
     canonicalUrl: string,
     uniqueKey?: string,
   ): Promise<string> {
+    await this.prisma.$transaction(async (transaction) => {
+      const item = await transaction.researchItem.findUnique({
+        where: { id: researchItemId },
+        select: { automationState: true },
+      });
+      if (!item) return;
+
+      if (item.automationState !== ResearchAutomationState.RUNNING) {
+        await transaction.researchItem.update({
+          where: { id: researchItemId },
+          data: {
+            automationClaimedAt: null,
+            automationOwner: null,
+            automationState: ResearchAutomationState.QUEUED,
+            automationVersion: { increment: 1 },
+          },
+        });
+        await transaction.researchSourceSnapshot.upsert({
+          where: { researchItemId },
+          create: {
+            researchItemId,
+            status: SourceFetchStatus.PENDING,
+            url: canonicalUrl,
+          },
+          update: {
+            failureReason: null,
+            status: SourceFetchStatus.PENDING,
+            url: canonicalUrl,
+          },
+        });
+      }
+    });
+
     const jobId = await this.jobs.enqueueWhileActive(
       DISCOVERY_JOB,
       { researchItemId },
       uniqueKey ?? `research-source:${researchItemId}`,
     );
-    await this.prisma.researchSourceSnapshot.upsert({
-      where: { researchItemId },
-      create: {
-        researchItemId,
-        status: SourceFetchStatus.PENDING,
-        url: canonicalUrl,
-      },
-      update: {
-        failureReason: null,
-        status: SourceFetchStatus.PENDING,
-        url: canonicalUrl,
-      },
+    this.notifications.publishResearchEvent({
+      kind: 'source',
+      scope: 'research',
+      researchItemId,
+      sourceStatus: SourceFetchStatus.PENDING,
     });
     return jobId;
   }
@@ -83,36 +124,42 @@ export class ResearchDiscoveryService implements OnModuleInit {
   }
 
   private async discover(researchItemId: string): Promise<void> {
-    const item = await this.prisma.researchItem.findUnique({
-      where: { id: researchItemId },
-      include: {
-        contributors: {
-          include: { matches: true },
-          orderBy: { sortOrder: 'asc' },
-        },
-        paper: true,
-      },
-    });
-    if (!item?.canonicalUrl) return;
+    const claimed = await this.claim(researchItemId);
+    if (!claimed) return;
 
-    await this.prisma.researchSourceSnapshot.upsert({
-      where: { researchItemId },
-      create: {
-        researchItemId,
-        status: SourceFetchStatus.PENDING,
-        url: item.canonicalUrl,
-      },
-      update: {
-        failureReason: null,
-        status: SourceFetchStatus.PENDING,
-        url: item.canonicalUrl,
-      },
-    });
-
-    let response: SourceResponse;
-    let metadata: SourceMetadata | undefined;
-    let provider = 'SOURCE_PAGE';
     try {
+      const item = await this.prisma.researchItem.findUnique({
+        where: { id: researchItemId },
+        include: {
+          contributors: {
+            include: { matches: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+          paper: true,
+          submittedBy: {
+            select: {
+              role: true,
+              isSystemAccount: true,
+              isDeleted: true,
+              status: true,
+              person: { select: { id: true } },
+            },
+          },
+        },
+      });
+      if (!item?.canonicalUrl) {
+        await this.finish(
+          researchItemId,
+          claimed,
+          SourceFetchStatus.FAILED,
+          'Canonical source URL is missing',
+        );
+        return;
+      }
+
+      let response: SourceResponse | undefined;
+      let metadata: SourceMetadata | undefined;
+      let provider = 'SOURCE_PAGE';
       const doi = item.paper?.doi ?? doiFromUrl(item.canonicalUrl);
       if (doi) {
         try {
@@ -131,169 +178,472 @@ export class ResearchDiscoveryService implements OnModuleInit {
         }
       }
       response ??= await this.fetcher.fetch(item.canonicalUrl);
-    } catch (error) {
-      const unavailable = error instanceof SourceUnavailableError;
-      await this.prisma.researchSourceSnapshot.update({
-        where: { researchItemId },
-        data: {
-          failureReason: error instanceof Error ? error.message : String(error),
-          fetchedAt: new Date(),
-          status: unavailable
-            ? SourceFetchStatus.UNAVAILABLE
-            : SourceFetchStatus.FAILED,
-        },
-      });
-      if (!unavailable) throw error;
-      return;
-    }
+      metadata ??= await this.parse(response);
 
-    metadata ??= await this.parse(response);
-    if (item.paper) {
-      await this.prisma.paper.update({
-        where: { researchItemId },
-        data: {
-          publicationType: publicationCategory(
-            item.paper.publicationType,
-            item.paper.citation,
-            item.paper.venue,
-          ),
-        },
-      });
-    }
-    const evidence = {
-      ...serializableMetadata(metadata, response.finalUrl),
-      provider,
-    };
-    if (metadata.authors.length) {
-      await this.syncContributorsFromMetadata(
-        researchItemId,
-        item.contributors,
-        metadata.authors,
-      );
-    }
-
-    const contributors = await this.prisma.researchContributor.findMany({
-      where: { researchItemId },
-      include: { matches: true },
-      orderBy: { sortOrder: 'asc' },
-    });
-    const people = await this.prisma.person.findMany({
-      where: { userId: { not: null } },
-      select: {
-        id: true,
-        fullName: true,
-        links: {
-          where: { type: PersonLinkType.ORCID },
-          select: { url: true },
-        },
-      },
-    });
-    const names = new Map<string, typeof people>();
-    const orcids = new Map<string, (typeof people)[number]>();
-    for (const person of people) {
-      const key = personNameTokenKey(person.fullName);
-      names.set(key, [...(names.get(key) ?? []), person]);
-      for (const link of person.links) {
-        const orcid = normalizeOrcid(link.url);
-        if (orcid) orcids.set(orcid, person);
-      }
-    }
-
-    let proposed = 0;
-    for (const contributor of contributors) {
-      const author = findAuthor(metadata.authors, contributor.displayName);
-      if (!author) continue;
-      const identifierMatch = author.orcid
-        ? orcids.get(author.orcid)
-        : undefined;
-      const nameMatches = names.get(personNameTokenKey(author.name)) ?? [];
-      const fuzzyMatch = identifierMatch
-        ? undefined
-        : bestPersonNameMatch(author.name, people);
-      const person =
-        identifierMatch ??
-        (nameMatches.length === 1 &&
-        personNameTokenKey(author.name).split(' ').length >= 2
-          ? nameMatches[0]
-          : undefined) ??
-        fuzzyMatch?.person;
-      if (!person) continue;
-      // Discovery can establish strong evidence, but it never makes the identity decision.
-      // Every registered-person match must be reviewed by a moderator.
-      const existingDecision = contributor.matches.find(
-        (match) => match.personId === person.id,
-      );
-      if (
-        existingDecision?.status === ContributorMatchStatus.VERIFIED ||
-        existingDecision?.status === ContributorMatchStatus.REJECTED
-      ) {
-        continue;
-      }
-
-      const confidence = identifierMatch ? 1 : (fuzzyMatch?.confidence ?? 1);
-      const reason = identifierMatch
-        ? 'ORCID'
-        : (fuzzyMatch?.reason ?? 'Exact normalized name');
-      const status = ContributorMatchStatus.PROPOSED;
-      await this.prisma.$transaction(async (transaction) => {
-        await transaction.contributorMatch.upsert({
+      const evidence = {
+        ...serializableMetadata(metadata, response.finalUrl),
+        provider,
+      };
+      const verification = await this.settings.verification();
+      const applied = await this.prisma.$transaction(async (transaction) => {
+        // Descriptive edits may advance the revision without invalidating this
+        // lease. Source edits/manual decisions clear it. Lock the exact lease
+        // before reading current ownership and publishing against its revision.
+        const lease = await transaction.researchItem.updateMany({
           where: {
-            researchItemId_contributorSortOrder_personId: {
-              contributorSortOrder: contributor.sortOrder,
-              personId: person.id,
-              researchItemId,
-            },
+            automationOwner: this.workerId,
+            automationState: ResearchAutomationState.RUNNING,
+            automationVersion: { gte: claimed.version },
+            automationClaimedAt: claimed.claimedAt,
+            id: researchItemId,
           },
-          create: {
-            confidence,
-            contributorSortOrder: contributor.sortOrder,
-            evidence: {
-              authorName: author.name,
-              canonicalUrl: response.finalUrl,
-              matchReason: reason,
-              orcid: author.orcid,
-            },
-            personId: person.id,
-            researchItemId,
-            source: ContributorMatchSource.SOURCE_METADATA,
-            status,
-          },
-          update: {
-            confidence,
-            evidence: {
-              authorName: author.name,
-              canonicalUrl: response.finalUrl,
-              matchReason: reason,
-              orcid: author.orcid,
-            },
-            source: ContributorMatchSource.SOURCE_METADATA,
-            status,
+          data: {
+            automationClaimedAt: null,
+            automationOwner: null,
+            automationState: ResearchAutomationState.SUCCEEDED,
+            automationVersion: { increment: 1 },
           },
         });
-      });
-      proposed += 1;
-    }
+        if (lease.count !== 1) return { proposed: 0, stale: true };
+        const item = await transaction.researchItem.findUniqueOrThrow({
+          where: { id: researchItemId },
+          include: {
+            contributors: {
+              include: { matches: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+            paper: true,
+            submittedBy: {
+              select: {
+                role: true,
+                isSystemAccount: true,
+                isDeleted: true,
+                status: true,
+                person: { select: { id: true } },
+              },
+            },
+          },
+        });
+        const memberAutomatic =
+          item.submittedBy?.role === PlatformRole.MEMBER &&
+          verification[item.type === 'PAPER' ? 'newPaper' : 'newDataset'] ===
+            'AUTOMATIC';
 
-    if (proposed) {
-      await this.notifications.notifyReviewers({
-        type: NotificationType.RELATION_REVIEW_NEEDED,
-        title: 'Contributor matches need verification',
-        body: `${proposed} possible account connection${proposed === 1 ? '' : 's'} found for ${item.title ?? 'a research output'}.`,
-        actionUrl: `/workspace/research/${item.id}`,
-        payload: { researchItemId: item.id },
-      });
-    }
+        if (item.paper) {
+          await transaction.paper.update({
+            where: { researchItemId },
+            data: {
+              publicationType: publicationCategory(
+                item.paper.publicationType,
+                item.paper.citation,
+                item.paper.venue,
+              ),
+            },
+          });
+        }
+        if (metadata.authors.length) {
+          await this.syncContributorsFromMetadata(
+            transaction,
+            researchItemId,
+            item.contributors,
+            metadata.authors,
+          );
+        }
 
-    await this.prisma.researchSourceSnapshot.update({
-      where: { researchItemId },
-      data: {
-        contentType: response.contentType,
-        failureReason: null,
-        fetchedAt: new Date(),
-        metadata: evidence,
-        status: SourceFetchStatus.FETCHED,
-        url: response.finalUrl,
+        const contributors = await transaction.researchContributor.findMany({
+          where: { researchItemId },
+          include: { matches: true },
+          orderBy: { sortOrder: 'asc' },
+        });
+        const people = await transaction.person.findMany({
+          where: { userId: { not: null } },
+          select: {
+            id: true,
+            fullName: true,
+            links: {
+              where: { type: PersonLinkType.ORCID },
+              select: { url: true },
+            },
+          },
+        });
+        const orcids = new Map<string, Array<(typeof people)[number]>>();
+        for (const person of people) {
+          for (const link of person.links) {
+            const orcid = normalizeOrcid(link.url);
+            if (orcid) {
+              orcids.set(orcid, [...(orcids.get(orcid) ?? []), person]);
+            }
+          }
+        }
+
+        for (const contributor of contributors) {
+          // Synchronization puts source authors first, in source order. Keep
+          // that association: two same-name authors can have different ORCIDs.
+          const author = metadata.authors[contributor.sortOrder];
+          if (!author) continue;
+          const identifierMatches = author.orcid
+            ? (orcids.get(author.orcid) ?? [])
+            : [];
+          const candidates = (
+            identifierMatches.length
+              ? identifierMatches.map((person) => ({
+                  confidence: 1,
+                  person,
+                  reason: 'ORCID',
+                }))
+              : people.flatMap((person) => {
+                  const match = personNameMatchEvidence(
+                    author.name,
+                    person.fullName,
+                  );
+                  return match ? [{ ...match, person }] : [];
+                })
+          ).sort((left, right) => right.confidence - left.confidence);
+          const best = candidates[0];
+          if (!best) continue;
+
+          const ambiguous =
+            candidates[1]?.confidence === best.confidence ||
+            (identifierMatches.length !== 1 &&
+              metadata.authors.filter(
+                ({ name }) =>
+                  personNameTokenKey(name) === personNameTokenKey(author.name),
+              ).length > 1);
+          const existingDecision = contributor.matches.find(
+            (match) => match.personId === best.person.id,
+          );
+          const autoBind =
+            !ambiguous &&
+            best.confidence >= 0.8 &&
+            (!contributor.personId ||
+              contributor.personId === best.person.id) &&
+            (!existingDecision ||
+              existingDecision.source ===
+                ContributorMatchSource.SOURCE_METADATA);
+          const matchesToPersist = autoBind
+            ? [best]
+            : candidates.filter(
+                (candidate) => candidate.confidence === best.confidence,
+              );
+
+          for (const candidate of matchesToPersist) {
+            const decision = contributor.matches.find(
+              (match) => match.personId === candidate.person.id,
+            );
+            if (
+              decision?.status === ContributorMatchStatus.VERIFIED ||
+              decision?.status === ContributorMatchStatus.REJECTED ||
+              (decision?.status === ContributorMatchStatus.PROPOSED &&
+                decision.source === ContributorMatchSource.USER_CLAIM)
+            ) {
+              continue;
+            }
+
+            const evidence = {
+              authorName: author.name,
+              canonicalUrl: response.finalUrl,
+              matchReason: candidate.reason,
+              orcid: author.orcid,
+            };
+            const match = await transaction.contributorMatch.upsert({
+              where: {
+                researchItemId_contributorSortOrder_personId: {
+                  contributorSortOrder: contributor.sortOrder,
+                  personId: candidate.person.id,
+                  researchItemId,
+                },
+              },
+              create: {
+                confidence: candidate.confidence,
+                contributorSortOrder: contributor.sortOrder,
+                evidence,
+                personId: candidate.person.id,
+                researchItemId,
+                reviewedAt: autoBind ? new Date() : undefined,
+                source: ContributorMatchSource.SOURCE_METADATA,
+                status: autoBind
+                  ? ContributorMatchStatus.VERIFIED
+                  : ContributorMatchStatus.PROPOSED,
+              },
+              update: {
+                confidence: candidate.confidence,
+                evidence,
+                ...(autoBind
+                  ? {
+                      reviewedAt: new Date(),
+                      reviewedById: null,
+                      status: ContributorMatchStatus.VERIFIED,
+                    }
+                  : {
+                      source: ContributorMatchSource.SOURCE_METADATA,
+                      status: ContributorMatchStatus.PROPOSED,
+                    }),
+              },
+            });
+            if (autoBind) {
+              await transaction.researchContributor.update({
+                where: {
+                  researchItemId_sortOrder: {
+                    researchItemId,
+                    sortOrder: contributor.sortOrder,
+                  },
+                },
+                data: { personId: candidate.person.id },
+              });
+              await transaction.auditRecord.create({
+                data: {
+                  action: 'research.contributor-match-auto-verified',
+                  actorId: null,
+                  entityId: match.id,
+                  entityType: 'ContributorMatch',
+                  details: {
+                    confidence: candidate.confidence,
+                    researchItemId,
+                    sortOrder: contributor.sortOrder,
+                  },
+                },
+              });
+            }
+          }
+        }
+
+        const authorDiscrepancies = contributors
+          .filter(({ sortOrder }) => sortOrder >= metadata.authors.length)
+          .map(({ displayName }) => displayName);
+        await transaction.researchSourceSnapshot.update({
+          where: { researchItemId },
+          data: {
+            contentType: response.contentType,
+            failureReason: null,
+            fetchedAt: new Date(),
+            metadata: { ...evidence, authorDiscrepancies },
+            status: SourceFetchStatus.FETCHED,
+            url: response.finalUrl,
+          },
+        });
+        const proposedMatches = await transaction.contributorMatch.findMany({
+          where: {
+            researchItemId,
+            status: ContributorMatchStatus.PROPOSED,
+          },
+          select: { id: true },
+        });
+        const sourceVerified = sourceMetadataMatchesItem(item, metadata);
+        const onBehalf = item.submittedById
+          ? await transaction.auditRecord.findFirst({
+              where: {
+                action: 'research.submitted-on-behalf',
+                entityId: researchItemId,
+                entityType: 'ResearchItem',
+              },
+              orderBy: { createdAt: 'desc' },
+              select: {
+                actor: { select: { role: true } },
+                actorId: true,
+              },
+            })
+          : null;
+        const eligibleForAutoPublish =
+          item.submittedBy?.person &&
+          !item.submittedBy.isSystemAccount &&
+          !item.submittedBy.isDeleted &&
+          ['ACTIVE', 'PENDING_SETUP'].includes(item.submittedBy.status) &&
+          ((onBehalf?.actor?.role !== PlatformRole.MEMBER &&
+            onBehalf?.actorId !== null &&
+            onBehalf?.actorId !== undefined &&
+            onBehalf.actorId !== item.submittedById) ||
+            (memberAutomatic && !onBehalf));
+        let published = false;
+        if (
+          sourceVerified &&
+          contributors.length > 0 &&
+          authorDiscrepancies.length === 0 &&
+          proposedMatches.length === 0 &&
+          eligibleForAutoPublish &&
+          item.reviewStatus === ReviewStatus.NEEDS_REVIEW
+        ) {
+          const publishedAt = new Date();
+          const updated = await transaction.researchItem.updateMany({
+            where: {
+              automationVersion: item.automationVersion,
+              id: researchItemId,
+              reviewStatus: item.reviewStatus,
+            },
+            data: {
+              publishedAt,
+              reviewNote: null,
+              reviewedById: null,
+              reviewStatus: ReviewStatus.PUBLISHED,
+            },
+          });
+          if (updated.count === 1) {
+            await this.profileSync.normalizePublishedOutputs(
+              [researchItemId],
+              null,
+              transaction,
+            );
+            await transaction.auditRecord.create({
+              data: {
+                action: 'research.published-automatically',
+                actorId: null,
+                entityId: researchItemId,
+                entityType: 'ResearchItem',
+              },
+            });
+            published = true;
+          }
+        }
+        const personIds = published
+          ? [
+              ...new Set(
+                (
+                  await transaction.researchContributor.findMany({
+                    where: { researchItemId, personId: { not: null } },
+                    select: { personId: true },
+                  })
+                ).flatMap(({ personId }) => (personId ? [personId] : [])),
+              ),
+            ]
+          : [];
+        return {
+          submittedById: item.submittedById,
+          personIds,
+          proposed: proposedMatches.length,
+          published,
+          stale: false,
+        };
+      });
+      if (applied.stale) return;
+
+      if (applied.proposed) {
+        await this.notifications.notifyReviewers({
+          type: NotificationType.RELATION_REVIEW_NEEDED,
+          title: 'Contributor matches need verification',
+          body: `${applied.proposed} possible account connection${applied.proposed === 1 ? '' : 's'} found for ${item.title ?? 'a research output'}.`,
+          actionUrl: `/workspace/research/${item.id}`,
+          payload: { researchItemId: item.id },
+        });
+      }
+      if (applied.published) {
+        await this.rankings.recalculateMany(applied.personIds);
+        this.notifications.publishResearchEvent({
+          kind: 'status',
+          scope: 'research',
+          researchItemId,
+          reviewStatus: ReviewStatus.PUBLISHED,
+        });
+        if (applied.submittedById) {
+          await this.notifications.create(applied.submittedById, {
+            type: NotificationType.RESEARCH_REVIEWED,
+            title: 'Research submission automatically published',
+            body: `${item.title ?? 'Untitled research item'}: ${ReviewStatus.PUBLISHED}`,
+            actionUrl: `/workspace/research/${item.id}`,
+          });
+        }
+      }
+      this.notifications.publishResearchEvent({
+        kind: 'source',
+        scope: 'research',
+        researchItemId,
+        sourceStatus: SourceFetchStatus.FETCHED,
+      });
+    } catch (error) {
+      const unavailable = error instanceof SourceUnavailableError;
+      const sourceStatus = unavailable
+        ? SourceFetchStatus.UNAVAILABLE
+        : SourceFetchStatus.FAILED;
+      const finished = await this.finish(
+        researchItemId,
+        claimed,
+        sourceStatus,
+        error instanceof Error ? error.message : String(error),
+      );
+      if (finished) {
+        this.notifications.publishResearchEvent({
+          kind: 'source',
+          scope: 'research',
+          researchItemId,
+          sourceStatus,
+        });
+      }
+      if (!unavailable) throw error;
+    }
+  }
+
+  private async claim(
+    researchItemId: string,
+  ): Promise<{ version: number; claimedAt: Date } | null> {
+    const now = new Date();
+    const claimed = await this.prisma.researchItem.updateMany({
+      where: {
+        id: researchItemId,
+        OR: [
+          {
+            automationOwner: null,
+            automationState: {
+              in: [
+                ResearchAutomationState.QUEUED,
+                ResearchAutomationState.FAILED,
+              ],
+            },
+          },
+          {
+            automationState: ResearchAutomationState.RUNNING,
+            automationClaimedAt: { lt: new Date(now.getTime() - 5 * 60_000) },
+          },
+        ],
       },
+      data: {
+        automationClaimedAt: now,
+        automationOwner: this.workerId,
+        automationState: ResearchAutomationState.RUNNING,
+      },
+    });
+    if (claimed.count !== 1) return null;
+    const item = await this.prisma.researchItem.findUnique({
+      where: { id: researchItemId },
+      select: { automationOwner: true, automationVersion: true },
+    });
+    return item?.automationOwner === this.workerId
+      ? { version: item.automationVersion, claimedAt: now }
+      : null;
+  }
+
+  private async finish(
+    researchItemId: string,
+    claimed: { version: number; claimedAt: Date },
+    sourceStatus: SourceFetchStatus,
+    failureReason: string,
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.researchItem.updateMany({
+        where: {
+          automationOwner: this.workerId,
+          automationState: ResearchAutomationState.RUNNING,
+          automationVersion: { gte: claimed.version },
+          automationClaimedAt: claimed.claimedAt,
+          id: researchItemId,
+        },
+        data: {
+          automationClaimedAt: null,
+          automationOwner: null,
+          automationState:
+            sourceStatus === SourceFetchStatus.UNAVAILABLE
+              ? ResearchAutomationState.SUCCEEDED
+              : ResearchAutomationState.FAILED,
+          automationVersion: { increment: 1 },
+        },
+      });
+      if (updated.count !== 1) return false;
+      await transaction.researchSourceSnapshot.update({
+        where: { researchItemId },
+        data: {
+          failureReason,
+          fetchedAt: new Date(),
+          status: sourceStatus,
+        },
+      });
+      return true;
     });
   }
 
@@ -318,6 +668,7 @@ export class ResearchDiscoveryService implements OnModuleInit {
   }
 
   private async syncContributorsFromMetadata(
+    transaction: Prisma.TransactionClient,
     researchItemId: string,
     contributors: ExistingContributor[],
     authors: SourceAuthor[],
@@ -328,7 +679,11 @@ export class ResearchDiscoveryService implements OnModuleInit {
     const authorKeys = authors.map((author) => personNameTokenKey(author.name));
     if (
       currentKeys.length === authorKeys.length &&
-      currentKeys.every((key, index) => key === authorKeys[index])
+      currentKeys.every(
+        (key, index) =>
+          key === authorKeys[index] &&
+          contributors[index]?.displayName === authors[index]?.name,
+      )
     ) {
       return;
     }
@@ -378,28 +733,26 @@ export class ResearchDiscoveryService implements OnModuleInit {
         })),
     );
 
-    await this.prisma.$transaction(async (transaction) => {
-      await transaction.contributorMatch.deleteMany({
-        where: { researchItemId },
-      });
-      await transaction.researchContributor.deleteMany({
-        where: { researchItemId },
-      });
-      await transaction.researchContributor.createMany({
-        data: nextContributors.map((contributor) => ({
-          displayName: contributor.displayName,
-          personId: contributor.personId,
-          researchItemId: contributor.researchItemId,
-          sortOrder: contributor.sortOrder,
-        })),
-      });
-      if (preservedMatches.length) {
-        await transaction.contributorMatch.createMany({
-          data: preservedMatches,
-          skipDuplicates: true,
-        });
-      }
+    await transaction.contributorMatch.deleteMany({
+      where: { researchItemId },
     });
+    await transaction.researchContributor.deleteMany({
+      where: { researchItemId },
+    });
+    await transaction.researchContributor.createMany({
+      data: nextContributors.map((contributor) => ({
+        displayName: contributor.displayName,
+        personId: contributor.personId,
+        researchItemId: contributor.researchItemId,
+        sortOrder: contributor.sortOrder,
+      })),
+    });
+    if (preservedMatches.length) {
+      await transaction.contributorMatch.createMany({
+        data: preservedMatches,
+        skipDuplicates: true,
+      });
+    }
   }
 }
 
@@ -448,40 +801,8 @@ function bestExistingContributorMatch(
   return best.contributor;
 }
 
-function bestPersonNameMatch<T extends { fullName: string }>(
-  authorName: string,
-  people: T[],
-): { confidence: number; person: T; reason: string } | undefined {
-  const matches = people
-    .flatMap((person) => {
-      const evidence = personNameMatchEvidence(authorName, person.fullName);
-      return evidence ? [{ evidence, person }] : [];
-    })
-    .sort(
-      (left, right) => right.evidence.confidence - left.evidence.confidence,
-    );
-  const best = matches[0];
-  if (!best) return undefined;
-  if (matches[1]?.evidence.confidence === best.evidence.confidence) {
-    return undefined;
-  }
-  return {
-    confidence: best.evidence.confidence,
-    person: best.person,
-    reason: best.evidence.reason,
-  };
-}
-
 function doiFromUrl(value: string): string | undefined {
   return value.match(/(?:doi\.org\/)?(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/i)?.[1];
-}
-
-function findAuthor(
-  authors: SourceAuthor[],
-  displayName: string,
-): SourceAuthor | undefined {
-  const key = personNameTokenKey(displayName);
-  return authors.find((author) => personNameTokenKey(author.name) === key);
 }
 
 function serializableMetadata(
@@ -506,4 +827,42 @@ function requiredEvidenceObject(
     throw new Error('Contributor match evidence must be a JSON object');
   }
   return value;
+}
+
+function sourceMetadataMatchesItem(
+  item: {
+    contributors: readonly unknown[];
+    paper: { doi: string | null } | null;
+    title: string | null;
+  },
+  metadata: SourceMetadata,
+): boolean {
+  const itemTitle = normalizeIdentityText(item.title);
+  const sourceTitle = normalizeIdentityText(metadata.title);
+  if (!itemTitle || !sourceTitle || !titlesMatch(itemTitle, sourceTitle)) {
+    return false;
+  }
+  if (item.paper?.doi) {
+    const itemDoi = normalizeDoi(item.paper.doi);
+    const sourceDoi = normalizeDoi(metadata.doi);
+    if (!itemDoi || itemDoi !== sourceDoi) return false;
+  }
+  return metadata.authors.length > 0 || item.contributors.length === 0;
+}
+
+function titlesMatch(left: string, right: string): boolean {
+  if (left === right) return true;
+  if (left.length < 8 || right.length < 8) return false;
+  return left.includes(right) || right.includes(left);
+}
+
+function normalizeDoi(value: string | undefined): string | undefined {
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//, '')
+    .replace(/^doi\s*:\s*/, '');
+  return normalized
+    ?.match(/10\.\d{4,9}\/[-._;()/:a-z0-9]+/i)?.[0]
+    .replace(/[.,;)]$/, '');
 }

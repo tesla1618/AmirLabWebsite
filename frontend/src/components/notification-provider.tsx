@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,9 +15,14 @@ import { useAuth } from "@/components/auth-provider";
 import { API_URL } from "@/lib/api";
 import { apiRequest } from "@/lib/client-api";
 import type { NotificationRecord } from "@/lib/types";
+import {
+  parseResearchLiveEvent,
+  type ResearchLiveEvent,
+} from "@/lib/research-live-events";
 
 interface NotificationState {
   loading: boolean;
+  researchRefreshVersion: number;
   queueCounts: WorkspaceQueueCounts;
   unreadCount: number;
   markOneRead: () => void;
@@ -26,6 +32,9 @@ interface NotificationState {
     title: string;
     tone?: "error" | "success";
   }) => void;
+  subscribeResearchEvents: (
+    listener: (event: ResearchLiveEvent) => void,
+  ) => () => void;
 }
 
 export interface WorkspaceQueueCounts {
@@ -59,10 +68,22 @@ function fetchWorkspaceCounts() {
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { loading: authLoading, user } = useAuth();
+  const [researchRefreshVersion, setResearchRefreshVersion] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCounts, setQueueCounts] = useState(EMPTY_QUEUE_COUNTS);
   const [loadedUserId, setLoadedUserId] = useState<string>();
   const [toasts, setToasts] = useState<NotificationRecord[]>([]);
+  const researchEventListeners = useRef(
+    new Set<(event: ResearchLiveEvent) => void>(),
+  );
+
+  const subscribeResearchEvents = useCallback(
+    (listener: (event: ResearchLiveEvent) => void) => {
+      researchEventListeners.current.add(listener);
+      return () => researchEventListeners.current.delete(listener);
+    },
+    [],
+  );
 
   const showToast = useCallback(
     ({
@@ -161,6 +182,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const events = new EventSource(`${API_URL}/notifications/events`, {
       withCredentials: true,
     });
+    const researchEventListener = (event: Event) => {
+      if (!("data" in event) || typeof event.data !== "string") return;
+      let researchEvent: ResearchLiveEvent | null;
+      try {
+        researchEvent = parseResearchLiveEvent(JSON.parse(event.data));
+      } catch {
+        return;
+      }
+      if (!researchEvent) return;
+      for (const listener of researchEventListeners.current) {
+        listener(researchEvent);
+      }
+    };
+    events.addEventListener("research", researchEventListener);
     events.onmessage = (event) => {
       if (!active) return;
       try {
@@ -185,12 +220,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const reconcile = () => {
       if (document.visibilityState === "visible") {
         void refreshUnreadCount().catch(() => undefined);
+        setResearchRefreshVersion((current) => current + 1);
       }
     };
+    // SSE has no replay; reconcile server state after every connection.
+    events.onopen = reconcile;
     window.addEventListener("focus", reconcile);
     document.addEventListener("visibilitychange", reconcile);
     return () => {
       active = false;
+      events.removeEventListener("research", researchEventListener);
+      events.onopen = null;
       events.close();
       window.removeEventListener("focus", reconcile);
       document.removeEventListener("visibilitychange", reconcile);
@@ -201,11 +241,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     <NotificationContext.Provider
       value={{
         loading: authLoading || Boolean(user && loadedUserId !== user.id),
+        researchRefreshVersion,
         markOneRead: () =>
           setUnreadCount((current) => Math.max(0, current - 1)),
         queueCounts: user ? queueCounts : EMPTY_QUEUE_COUNTS,
         refreshUnreadCount,
         showToast,
+        subscribeResearchEvents,
         unreadCount: user ? unreadCount : 0,
       }}
     >

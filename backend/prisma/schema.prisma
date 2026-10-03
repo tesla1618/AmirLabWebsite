@@ -239,6 +239,14 @@ enum SourceFetchStatus {
   FAILED
 }
 
+enum ResearchAutomationState {
+  IDLE
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 enum ContributorMatchStatus {
   PROPOSED
   VERIFIED
@@ -284,6 +292,7 @@ model User {
   role                        PlatformRole           @default(MEMBER)
   status                      AccountStatus          @default(PENDING_SETUP)
   isDeleted                   Boolean                @default(false)
+  isSystemAccount             Boolean                @default(false)
   deletedAt                   DateTime?
   passwordHash                String?
   passwordSetAt               DateTime?
@@ -482,37 +491,42 @@ model PersonDepartment {
 }
 
 model ResearchItem {
-  id               String                  @id @default(uuid()) @db.Uuid
-  type             ResearchItemType
-  slug             String                  @unique
-  title            String?
-  summary          String?                 @db.Text
-  canonicalUrl     String?                 @unique
-  reviewStatus     ReviewStatus            @default(DRAFT)
-  reviewNote       String?                 @db.Text
-  submittedById    String?                 @db.Uuid
-  reviewedById     String?                 @db.Uuid
-  publishedAt      DateTime?
-  legacyUrl        String?
-  legacySourceId   String?                 @unique
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  submittedBy      User?                   @relation("ResearchSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
-  reviewedBy       User?                   @relation("ResearchReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  paper            Paper?
-  dataset          Dataset?
-  project          Project?
-  contributors     ResearchContributor[]
-  sourceSnapshot   ResearchSourceSnapshot?
-  departments      ResearchDepartment[]
-  reviews          ReviewRecord[]
-  projectOutputs   ProjectOutput[]         @relation("ProjectItem")
-  outputOf         ProjectOutput[]         @relation("OutputItem")
-  linkedUpdates    ProjectUpdate[]         @relation("ProjectUpdateOutput")
-  weeklyReports    WeeklyReportOutput[]
-  researchPrograms ResearchProgramItem[]
+  id                  String                  @id @default(uuid()) @db.Uuid
+  type                ResearchItemType
+  slug                String                  @unique
+  title               String?
+  summary             String?                 @db.Text
+  canonicalUrl        String?                 @unique
+  reviewStatus        ReviewStatus            @default(DRAFT)
+  reviewNote          String?                 @db.Text
+  submittedById       String?                 @db.Uuid
+  reviewedById        String?                 @db.Uuid
+  publishedAt         DateTime?
+  automationState     ResearchAutomationState @default(IDLE)
+  automationVersion   Int                     @default(0)
+  automationOwner     String?
+  automationClaimedAt DateTime?
+  legacyUrl           String?
+  legacySourceId      String?                 @unique
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  submittedBy         User?                   @relation("ResearchSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewedBy          User?                   @relation("ResearchReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  paper               Paper?
+  dataset             Dataset?
+  project             Project?
+  contributors        ResearchContributor[]
+  sourceSnapshot      ResearchSourceSnapshot?
+  departments         ResearchDepartment[]
+  reviews             ReviewRecord[]
+  projectOutputs      ProjectOutput[]         @relation("ProjectItem")
+  outputOf            ProjectOutput[]         @relation("OutputItem")
+  linkedUpdates       ProjectUpdate[]         @relation("ProjectUpdateOutput")
+  weeklyReports       WeeklyReportOutput[]
+  researchPrograms    ResearchProgramItem[]
 
   @@index([type, reviewStatus])
+  @@index([automationState, automationClaimedAt])
   @@index([publishedAt])
 }
 

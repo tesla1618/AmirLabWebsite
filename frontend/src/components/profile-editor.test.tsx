@@ -63,6 +63,7 @@ describe("ProfileEditor staff profiles", () => {
     });
     notifications.mockReturnValue({
       loading: false,
+      researchRefreshVersion: 0,
       markOneRead: vi.fn(),
       queueCounts: {
         applications: 0,
@@ -73,6 +74,7 @@ describe("ProfileEditor staff profiles", () => {
       },
       refreshUnreadCount: vi.fn(async () => {}),
       showToast: vi.fn(),
+      subscribeResearchEvents: vi.fn(() => () => {}),
       unreadCount: 0,
     });
     request.mockReset();

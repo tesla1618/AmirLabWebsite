@@ -136,17 +136,23 @@ export function parseHtmlMetadata(html: string): SourceMetadata {
     : dcAuthors.length
       ? dcAuthors
       : jsonLd.authors.map(({ name }) => name);
-  const authors = uniqueAuthors(
-    names.map((name, index) => ({
-      name,
-      orcid:
-        normalizeOrcid(orcids[index] ?? '') ??
-        jsonLd.authors.find(
-          (author) =>
-            normalizePersonName(author.name) === normalizePersonName(name),
-        )?.orcid,
-    })),
-  );
+  const authors =
+    citationAuthors.length || dcAuthors.length
+      ? uniqueAuthors(
+          names.map((name, index) => {
+            const matches = jsonLd.authors.filter(
+              (author) =>
+                normalizePersonName(author.name) === normalizePersonName(name),
+            );
+            return {
+              name,
+              orcid:
+                normalizeOrcid(orcids[index] ?? '') ??
+                (matches.length === 1 ? matches[0].orcid : undefined),
+            };
+          }),
+        )
+      : jsonLd.authors;
 
   return {
     authors,
@@ -272,12 +278,18 @@ function uniqueAuthors(authors: SourceAuthor[]): SourceAuthor[] {
   const unique = new Map<string, SourceAuthor>();
   for (const author of authors) {
     const name = author.name.replace(/\s+/g, ' ').trim();
-    const key = personNameTokenKey(name);
-    if (!key) continue;
+    const nameKey = personNameTokenKey(name);
+    if (!nameKey) continue;
+    const orcid = normalizeOrcid(author.orcid ?? '');
+    // A shared name is not a shared identity. Keep unidentified occurrences
+    // separate too; matching must resolve them rather than silently merge them.
+    const key = orcid
+      ? `${nameKey}:${orcid}`
+      : `${nameKey}:unknown:${unique.size}`;
     const existing = unique.get(key);
     unique.set(key, {
       name: existing?.name ?? name,
-      orcid: existing?.orcid ?? normalizeOrcid(author.orcid ?? ''),
+      orcid,
     });
   }
   return [...unique.values()];

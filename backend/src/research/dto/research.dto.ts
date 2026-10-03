@@ -52,7 +52,6 @@ export class SubmitResearchDto {
       : contributors;
   })
   @IsArray()
-  @ArrayNotEmpty()
   @ArrayMaxSize(50)
   @IsString({ each: true })
   @MinLength(1, { each: true })
@@ -124,7 +123,24 @@ export class SubmitResearchDto {
   accessNotes?: string;
 }
 
-export class ReviewResearchDto {
+export class UpdateResearchDto extends SubmitResearchDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+}
+
+export class VerifyResearchSourceDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+
+  @IsString()
+  @MinLength(3)
+  @MaxLength(4_000)
+  note!: string;
+}
+
+class ResearchDecisionDto {
   @IsIn([
     ReviewStatus.NEEDS_REVIEW,
     ReviewStatus.PUBLISHED,
@@ -139,12 +155,26 @@ export class ReviewResearchDto {
   note?: string;
 }
 
-export class BulkReviewResearchDto extends ReviewResearchDto {
+export class ReviewResearchDto extends ResearchDecisionDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+}
+
+export class BulkReviewResearchDto extends ResearchDecisionDto {
   @IsArray()
   @ArrayNotEmpty()
   @ArrayMaxSize(100)
   @IsUUID('4', { each: true })
   ids!: string[];
+
+  // Revisions correspond to ids by index; the service requires equal lengths.
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(100)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  expectedAutomationVersions!: number[];
 }
 
 function AllowedFor(...types: ResearchItemType[]): PropertyDecorator {

@@ -9,6 +9,7 @@ import {
   ContributorMatchStatus,
   NotificationType,
   Prisma,
+  ResearchAutomationState,
   ResearchItemType,
   ReviewStatus,
 } from '../../generated/prisma/client';
@@ -82,6 +83,8 @@ export class ResearchRelationshipsService {
         title: true,
         type: true,
         canonicalUrl: true,
+        automationVersion: true,
+        automationState: true,
         contributors: {
           orderBy: { sortOrder: 'asc' },
           select: { displayName: true, personId: true, sortOrder: true },
@@ -120,6 +123,11 @@ export class ResearchRelationshipsService {
       throw new ConflictException('This contributor is already verified');
     }
     const match = await this.prisma.$transaction(async (transaction) => {
+      await this.bumpResearchVersion(
+        transaction,
+        researchItemId,
+        dto.expectedAutomationVersion,
+      );
       const result = await transaction.contributorMatch.upsert({
         where: {
           researchItemId_contributorSortOrder_personId: {
@@ -191,6 +199,20 @@ export class ResearchRelationshipsService {
     ]);
     if (!person) throw new NotFoundException('Person not found');
     const match = await this.prisma.$transaction(async (transaction) => {
+      await this.bumpResearchVersion(
+        transaction,
+        researchItemId,
+        dto.expectedAutomationVersion,
+      );
+      const currentContributor =
+        await transaction.researchContributor.findUnique({
+          where: {
+            researchItemId_sortOrder: { researchItemId, sortOrder },
+          },
+          include: { researchItem: true },
+        });
+      if (!currentContributor)
+        throw new NotFoundException('Contributor not found');
       await transaction.contributorMatch.updateMany({
         where: { contributorSortOrder: sortOrder, researchItemId },
         data: {
@@ -210,7 +232,7 @@ export class ResearchRelationshipsService {
         create: {
           contributorSortOrder: sortOrder,
           evidence: {
-            linkedName: contributor.displayName,
+            linkedName: currentContributor.displayName,
           },
           personId: person.id,
           requestedById: reviewer.id,
@@ -222,7 +244,7 @@ export class ResearchRelationshipsService {
         },
         update: {
           evidence: {
-            linkedName: contributor.displayName,
+            linkedName: currentContributor.displayName,
           },
           reviewedAt: new Date(),
           reviewedById: reviewer.id,
@@ -293,6 +315,11 @@ export class ResearchRelationshipsService {
     }
 
     await this.prisma.$transaction(async (transaction) => {
+      await this.bumpResearchVersion(
+        transaction,
+        match.researchItemId,
+        dto.expectedAutomationVersion,
+      );
       const claimed = await transaction.contributorMatch.updateMany({
         where: { id, status: ContributorMatchStatus.PROPOSED },
         data: {
@@ -375,6 +402,33 @@ export class ResearchRelationshipsService {
     });
     if (!contributor) throw new NotFoundException('Contributor not found');
     return contributor;
+  }
+
+  private async bumpResearchVersion(
+    transaction: Prisma.TransactionClient,
+    researchItemId: string,
+    expectedAutomationVersion: number,
+  ): Promise<void> {
+    // Lock the parent before relationship writes. Active discovery owns the
+    // contributor snapshot; changing its revision would strand its lease.
+    const updated = await transaction.researchItem.updateMany({
+      where: {
+        automationVersion: expectedAutomationVersion,
+        automationState: {
+          notIn: [
+            ResearchAutomationState.QUEUED,
+            ResearchAutomationState.RUNNING,
+          ],
+        },
+        id: researchItemId,
+      },
+      data: { automationVersion: { increment: 1 } },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictException(
+        'This research record changed or source verification is in progress. Refresh after verification finishes and retry.',
+      );
+    }
   }
 
   private async recalculateIfPublished(

@@ -24,6 +24,8 @@ import {
   BulkReviewResearchDto,
   ReviewResearchDto,
   SubmitResearchDto,
+  UpdateResearchDto,
+  VerifyResearchSourceDto,
 } from './dto/research.dto';
 import { ResearchReviewQueryDto } from './dto/research-review-query.dto';
 import { ResearchRelationshipsService } from './research-relationships.service';
@@ -119,6 +121,22 @@ export class ResearchController {
     return this.researchService.publicStats();
   }
 
+  @Get('research/submitters')
+  @RequireRole(PlatformRole.MODERATOR)
+  submitters() {
+    return this.researchService.submitters();
+  }
+
+  @Post('research/:id/verify-source')
+  @RequireRole(PlatformRole.MODERATOR)
+  verifySource(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: VerifyResearchSourceDto,
+    @CurrentUser() reviewer: AuthenticatedUser,
+  ) {
+    return this.researchService.verifySource(id, body, reviewer);
+  }
+
   @Public()
   @Get('research/:slug')
   researchBySlug(@Param('slug') slug: string) {
@@ -137,7 +155,7 @@ export class ResearchController {
   @RequireRole(PlatformRole.MODERATOR)
   updateReviewRecord(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: SubmitResearchDto,
+    @Body() body: UpdateResearchDto,
     @CurrentUser() reviewer: AuthenticatedUser,
   ) {
     return this.researchService.updateReviewRecord(id, body, reviewer);

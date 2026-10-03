@@ -391,6 +391,20 @@ export class ProfilesService {
     if (requests.length !== ids.length) {
       throw new NotFoundException('One or more profile edits were not found');
     }
+    const selfReviewRequests = requests.filter(
+      (request) => request.person.userId === reviewer.id,
+    );
+    if (selfReviewRequests.length) {
+      throw reviewBadRequest(
+        'You cannot review your own profile edit.',
+        selfReviewRequests.map((request) => ({
+          code: 'PROFILE_SELF_REVIEW',
+          itemId: request.id,
+          message: 'You cannot review your own profile edit.',
+          tone: 'error' as const,
+        })),
+      );
+    }
     const expectedRevision = new Map(
       dto.items.map(({ id, revision }) => [id, revision]),
     );
@@ -688,6 +702,16 @@ export class ProfilesService {
       include: { person: { include: { user: { select: { role: true } } } } },
     });
     if (!request) throw new NotFoundException('Profile edit not found');
+    if (request.person.userId === reviewer.id) {
+      throw reviewBadRequest('You cannot review your own profile edit.', [
+        {
+          code: 'PROFILE_SELF_REVIEW',
+          itemId: request.id,
+          message: 'You cannot review your own profile edit.',
+          tone: 'error',
+        },
+      ]);
+    }
     if (
       request.status !== ProfileReviewStatus.NEEDS_REVIEW ||
       request.revision !== dto.revision

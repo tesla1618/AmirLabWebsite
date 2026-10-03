@@ -25,6 +25,7 @@ interface ConnectionItem {
     type: string;
     canonicalUrl: string | null;
     reviewStatus: string;
+    automationVersion: number;
   };
 }
 
@@ -45,6 +46,8 @@ interface SearchResult {
   title: string | null;
   type: string;
   canonicalUrl: string | null;
+  automationVersion: number;
+  automationState: string;
   contributors: Array<{
     displayName: string;
     personId: string | null;
@@ -130,13 +133,20 @@ export function ResearchConnectionsPanel() {
     }
   }
 
-  async function claim(itemId: string, sortOrder: number) {
+  async function claim(
+    itemId: string,
+    sortOrder: number,
+    expectedAutomationVersion: number,
+  ) {
     const key = `${itemId}:${sortOrder}`;
     setClaiming(key);
     claimIssues.clearOne(key);
     try {
       await apiRequest(`/research/${itemId}/contributors/${sortOrder}/claim`, {
-        body: JSON.stringify({ evidenceUrl: evidenceUrl || undefined }),
+        body: JSON.stringify({
+          evidenceUrl: evidenceUrl || undefined,
+          expectedAutomationVersion,
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -145,6 +155,10 @@ export function ResearchConnectionsPanel() {
         title: "Connection request sent",
       });
       await load();
+      setResults(await apiRequest<SearchResult[]>(
+        `/research-connections/search?query=${encodeURIComponent(query)}`,
+        { method: "GET" },
+      ));
     } catch (caught) {
       const message =
         caught instanceof ApiRequestError
@@ -413,9 +427,13 @@ export function ResearchConnectionsPanel() {
                       ) : (
                         <ButtonControl
                           compact
-                          disabled={claiming === key}
+                          disabled={claiming === key || item.automationState === "QUEUED" || item.automationState === "RUNNING"}
                           onClick={() =>
-                            void claim(item.id, contributor.sortOrder)
+                            void claim(
+                              item.id,
+                              contributor.sortOrder,
+                              item.automationVersion,
+                            )
                           }
                           variant="secondary"
                         >

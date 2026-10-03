@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   busy?: boolean;
   tone?: "primary" | "danger";
   onCancel: () => void;
@@ -21,6 +22,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancel",
   busy = false,
   tone = "primary",
   onCancel,
@@ -84,7 +86,7 @@ export function ConfirmDialog({
         </p>
         <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
           <ButtonControl autoFocus disabled={busy} onClick={onCancel}>
-            Cancel
+            {cancelLabel}
           </ButtonControl>
           <ButtonControl disabled={busy} onClick={onConfirm} variant={tone}>
             {busy ? "Working…" : confirmLabel}

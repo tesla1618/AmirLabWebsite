@@ -35,6 +35,7 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import { useNotifications } from "@/components/notification-provider";
+import { useAuth } from "@/components/auth-provider";
 
 const filters = [
   { label: "Awaiting review", value: "SUBMITTED" },
@@ -44,6 +45,7 @@ const filters = [
 
 export function WeeklyReportReview() {
   const { refreshUnreadCount, showToast } = useNotifications();
+  const { user } = useAuth();
   const [reports, setReports] = useState<WeeklyReport[]>();
   // Unset until the reviewer picks a tab: a linked report opens on its tab.
   const [filterChoice, setFilter] = useState<WeeklyReportStatus>();
@@ -93,8 +95,13 @@ export function WeeklyReportReview() {
   const visible = reports?.filter(({ status }) => status === filter) ?? [];
   const missing = Boolean(reports && selectedId && !selected);
 
-  const bulk = useBulkSelection(visible.map(({ id }) => id));
-  const selectedReports = visible.filter(({ id }) => bulk.isSelected(id));
+  const selfReviewReason = "You cannot review your own weekly report.";
+  const blockedIds = new Set(
+    visible.filter(({ authorId }) => authorId === user?.id).map(({ id }) => id),
+  );
+  const selectableReports = visible.filter(({ id }) => !blockedIds.has(id));
+  const bulk = useBulkSelection(selectableReports.map(({ id }) => id));
+  const selectedReports = selectableReports.filter(({ id }) => bulk.isSelected(id));
   const selectedAttentionCount = selectedReports.filter(
     ({ id }) => reviewIssues.forItem(id).length > 0,
   ).length;
@@ -260,7 +267,7 @@ export function WeeklyReportReview() {
         onSubmit={reviewBulk}
         onSuccess={reviewIssues.clear}
         selectAllState={bulk.selectAllState}
-        selectableCount={visible.length}
+        selectableCount={selectableReports.length}
         selectedCount={bulk.selectedCount}
         successBody={(status) =>
           `${selectedReports.length} weekly report${selectedReports.length === 1 ? "" : "s"} moved to ${status.replaceAll("_", " ").toLowerCase()}.`
@@ -302,6 +309,7 @@ export function WeeklyReportReview() {
                         ariaLabel={`Select ${report.author.person?.fullName ?? report.author.email ?? "weekly report"}`}
                         checked={bulk.isSelected(report.id)}
                         className="gap-0"
+                        disabled={blockedIds.has(report.id)}
                         id={`weekly-review-select-${report.id}`}
                         onCheckedChange={(checked) =>
                           bulk.toggle(report.id, checked)
@@ -478,11 +486,13 @@ export function WeeklyReportReview() {
                       <ButtonControl
                         disabled={
                           working ||
+                          Boolean(selected && blockedIds.has(selected.id)) ||
                           Boolean(
                             selected &&
                             reviewIssues.forItem(selected.id).length,
                           )
                         }
+                        title={selected && blockedIds.has(selected.id) ? selfReviewReason : undefined}
                         onClick={() => void review("CHANGES_REQUESTED")}
                         variant="secondary"
                       >
@@ -492,11 +502,13 @@ export function WeeklyReportReview() {
                       <ButtonControl
                         disabled={
                           working ||
+                          Boolean(selected && blockedIds.has(selected.id)) ||
                           Boolean(
                             selected &&
                             reviewIssues.forItem(selected.id).length,
                           )
                         }
+                        title={selected && blockedIds.has(selected.id) ? selfReviewReason : undefined}
                         onClick={() => void review("REVIEWED")}
                         variant="primary"
                       >

@@ -305,6 +305,7 @@ export class WeeklyReportsService {
     if (reports.length !== ids.length) {
       throw new NotFoundException('One or more weekly reports were not found');
     }
+    assertNoSelfAuthoredWeeklyReport(reports, user.id);
     const unavailableReports = reports.filter(
       ({ status }) => status !== WeeklyReportStatus.SUBMITTED,
     );
@@ -324,6 +325,7 @@ export class WeeklyReportsService {
     await this.prisma.$transaction(async (transaction) => {
       const updated = await transaction.weeklyReport.updateMany({
         where: {
+          authorId: { not: user.id },
           id: { in: ids },
           status: WeeklyReportStatus.SUBMITTED,
         },
@@ -382,9 +384,10 @@ export class WeeklyReportsService {
   ) {
     const report = await this.prisma.weeklyReport.findUnique({
       where: { id },
-      select: { authorId: true, status: true },
+      select: { authorId: true, id: true, status: true },
     });
     if (!report) throw new NotFoundException('Weekly report not found');
+    assertNoSelfAuthoredWeeklyReport([report], user.id);
     if (report.status !== WeeklyReportStatus.SUBMITTED) {
       throw reviewConflict('This weekly report is no longer awaiting review.', [
         {
@@ -453,6 +456,26 @@ export class WeeklyReportsService {
       where: { id },
       include: REPORT_INCLUDE,
     });
+  }
+}
+
+function assertNoSelfAuthoredWeeklyReport(
+  reports: Array<{ id: string; authorId: string }>,
+  reviewerId: string,
+): void {
+  const selfAuthoredReports = reports.filter(
+    ({ authorId }) => authorId === reviewerId,
+  );
+  if (selfAuthoredReports.length) {
+    throw reviewConflict(
+      'You cannot review your own weekly report.',
+      selfAuthoredReports.map(({ id }) => ({
+        code: 'WEEKLY_REPORT_SELF_REVIEW',
+        itemId: id,
+        message: 'The reviewer cannot review their own weekly report.',
+        tone: 'error' as const,
+      })),
+    );
   }
 }
 

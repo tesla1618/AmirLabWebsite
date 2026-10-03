@@ -39,16 +39,14 @@ export function ResearchSubmissionForm() {
   useEffect(() => {
     if (!staff) return;
     let active = true;
-    void apiRequest<{
-      people: Array<{
+    void apiRequest<Array<{
         id: string;
         fullName: string;
         roleTitle: string | null;
         headline: string | null;
-      }>;
-    }>("/projects/options", { method: "GET" })
+      }>>("/research/submitters", { method: "GET" })
       .then((result) => {
-        if (active) setPeople(result.people);
+        if (active) setPeople(result);
       })
       .catch((caught) => {
         if (!active) return;
@@ -83,14 +81,9 @@ export function ResearchSubmissionForm() {
       return;
     }
     const contributors = String(form.get("contributors") ?? "")
-      .split(",")
+      .split("\n")
       .map((name) => name.trim())
       .filter(Boolean);
-    if (!contributors.length) {
-      setError("Add at least one contributor.");
-      setLoading(false);
-      return;
-    }
     const type = form.get("type");
     try {
       const body: Record<string, unknown> = {
@@ -110,6 +103,7 @@ export function ResearchSubmissionForm() {
         method: "POST",
       });
       formElement.reset();
+      setSubmitterPersonId("");
       showToast({
         body:
           result.outcome === "QUEUED_FOR_REVIEW"
@@ -154,9 +148,9 @@ export function ResearchSubmissionForm() {
           </WorkspaceRecordPanelTitle>
         </WorkspaceRecordPanelHeader>
         {staff ? (
-          <FormField label="Submit on behalf of">
+          <FormField label="Submitted by">
             <SearchableSelect
-              ariaLabel="Registered submitter"
+              ariaLabel="Submitted by"
               disabled={loadingPeople || loading}
               emptyMessage="No registered people found."
               onValueChange={setSubmitterPersonId}
@@ -168,18 +162,20 @@ export function ResearchSubmissionForm() {
               placeholder={
                 loadingPeople
                   ? "Loading registered people…"
-                  : "Select registered member…"
+                   : "Select registered person…"
               }
               searchPlaceholder="Search by name or role…"
               value={submitterPersonId}
             />
             <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
-              Your staff account records the action. The selected member is
-              recorded as the submitter, and the record still enters manual
-              review.
+              Select the person this research belongs to. Your account is recorded in the activity history.
             </p>
           </FormField>
-        ) : null}
+        ) : (
+          <FormField label="Submitted by">
+            <p className="m-0 text-sm text-ink">{user?.person?.fullName ?? "Your registered profile"}</p>
+          </FormField>
+        )}
         <FormField htmlFor="research-type" label="Type">
           <SelectControl
             defaultValue="PAPER"
@@ -203,10 +199,10 @@ export function ResearchSubmissionForm() {
             DOI, repository, or dataset page. No file is uploaded.
           </p>
         </FormField>
-        <FormField htmlFor="contributors" label="Contributors">
-          <InputControl id="contributors" name="contributors" required />
+        <FormField htmlFor="contributors" label="Authors">
+          <TextareaControl id="contributors" name="contributors" rows={3} />
           <p className="m-0 text-[.82rem] leading-[1.5] text-ink-muted">
-            Comma-separated, in publication order.
+            One author per line, in publication order. You can leave this empty for source discovery; authors are required before publication.
           </p>
         </FormField>
         <FormField htmlFor="research-summary" label="Summary">
@@ -215,7 +211,7 @@ export function ResearchSubmissionForm() {
         {error ? <FormMessage>{error}</FormMessage> : null}
         <div className="flex flex-wrap justify-end gap-[.65rem] max-[700px]:justify-start">
           <ButtonControl
-            disabled={loading || loadingPeople}
+            disabled={loading || loadingPeople || !effectiveSubmitterPersonId}
             type="submit"
             variant="primary"
           >

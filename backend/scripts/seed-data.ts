@@ -95,6 +95,17 @@ export interface SeedPosition {
   engagementType: string;
 }
 
+export function firstKnownContributorSourceIdForSeed(
+  contributorSourceIds: readonly string[],
+  knownContributorSourceIds: ReadonlySet<string>,
+): string | null {
+  return (
+    contributorSourceIds.find((sourceId) =>
+      knownContributorSourceIds.has(sourceId),
+    ) ?? null
+  );
+}
+
 export interface AmirSeedData {
   schemaVersion: number;
   source: {

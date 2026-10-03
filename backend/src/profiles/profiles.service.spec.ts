@@ -411,6 +411,118 @@ describe('ProfilesService review', () => {
     expect(assets.remove).not.toHaveBeenCalled();
   });
 
+  it('rejects self-review for both profile decisions before opening a transaction', async () => {
+    const prisma = {
+      $transaction: jest.fn(),
+      profileEditRequest: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'request-id',
+          payload: {},
+          person: {
+            userId: 'reviewer-id',
+            user: { role: PlatformRole.MEMBER },
+          },
+          revision: 2,
+          status: ProfileReviewStatus.NEEDS_REVIEW,
+        }),
+      },
+    };
+    const service = await createProfilesService({
+      assets: { remove: jest.fn() },
+      notifications: { create: jest.fn() },
+      prisma,
+      profileSync: { normalizePublishedOutputsForPeople: jest.fn() },
+      settings: { verification: jest.fn() },
+    });
+    const reviewer = {
+      email: 'reviewer@example.org',
+      id: 'reviewer-id',
+      person: null,
+      role: PlatformRole.ADMIN,
+      status: AccountStatus.ACTIVE,
+    };
+
+    for (const status of [
+      ProfileReviewStatus.APPROVED,
+      ProfileReviewStatus.REJECTED,
+    ]) {
+      await expect(
+        service.review(
+          'request-id',
+          {
+            revision: 2,
+            status,
+            ...(status === ProfileReviewStatus.REJECTED
+              ? { note: 'Not allowed' }
+              : {}),
+          },
+          reviewer,
+        ),
+      ).rejects.toThrow('You cannot review your own profile edit.');
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects mixed self-review profile bulk decisions atomically', async () => {
+    const prisma = {
+      $transaction: jest.fn(),
+      profileEditRequest: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'self-request-id',
+            person: { userId: 'reviewer-id' },
+            personId: 'self-person-id',
+            revision: 1,
+            status: ProfileReviewStatus.NEEDS_REVIEW,
+          },
+          {
+            id: 'other-request-id',
+            person: { userId: 'other-id' },
+            personId: 'other-person-id',
+            revision: 1,
+            status: ProfileReviewStatus.NEEDS_REVIEW,
+          },
+        ]),
+      },
+    };
+    const service = await createProfilesService({
+      assets: { removeMany: jest.fn() },
+      notifications: { createMany: jest.fn() },
+      prisma,
+      profileSync: {},
+      settings: {},
+    });
+    const reviewer = {
+      email: 'reviewer@example.org',
+      id: 'reviewer-id',
+      person: null,
+      role: PlatformRole.ADMIN,
+      status: AccountStatus.ACTIVE,
+    };
+
+    for (const status of [
+      ProfileReviewStatus.APPROVED,
+      ProfileReviewStatus.REJECTED,
+    ]) {
+      await expect(
+        service.bulkReview(
+          {
+            items: [
+              { id: 'self-request-id', revision: 1 },
+              { id: 'other-request-id', revision: 1 },
+            ],
+            status,
+            ...(status === ProfileReviewStatus.REJECTED
+              ? { note: 'Not allowed' }
+              : {}),
+          },
+          reviewer,
+        ),
+      ).rejects.toThrow('You cannot review your own profile edit.');
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('requires a reviewer note when rejecting profile changes', async () => {
     const service = await createProfilesService({
       assets: { remove: jest.fn() },

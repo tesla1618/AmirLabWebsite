@@ -1,14 +1,20 @@
 import {
   IsEnum,
   IsOptional,
+  IsInt,
   IsString,
   IsUrl,
   IsUUID,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { ContributorMatchStatus } from '../../../generated/prisma/client';
 
 export class ClaimContributorDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   evidenceUrl?: string;
@@ -20,6 +26,10 @@ export class ClaimContributorDto {
 }
 
 export class LinkContributorDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+
   @IsUUID()
   personId!: string;
 
@@ -30,6 +40,10 @@ export class LinkContributorDto {
 }
 
 export class ReviewContributorMatchDto {
+  @IsInt()
+  @Min(0)
+  expectedAutomationVersion!: number;
+
   @IsEnum(ContributorMatchStatus)
   status!: ContributorMatchStatus;
 

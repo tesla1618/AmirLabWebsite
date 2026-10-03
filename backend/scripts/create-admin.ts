@@ -28,6 +28,7 @@ async function main(): Promise<void> {
       create: {
         activatedAt: new Date(),
         email,
+        isSystemAccount: true,
         passwordHash,
         passwordSetAt: new Date(),
         role: PlatformRole.ADMIN,

@@ -146,6 +146,51 @@ describe('WeeklyReportsService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('blocks authors from reviewing their own weekly report', async () => {
+    prisma.weeklyReport.findUnique.mockResolvedValue({
+      authorId: member.id,
+      status: WeeklyReportStatus.SUBMITTED,
+    });
+    const service = await resolveService(WeeklyReportsService, [
+      { provide: NotificationsService, useValue: notifications },
+      { provide: PrismaService, useValue: prisma },
+    ]);
+
+    await expect(
+      service.review(
+        '44444444-4444-4444-8444-444444444444',
+        { status: WeeklyReportStatus.REVIEWED },
+        member,
+      ),
+    ).rejects.toThrow('You cannot review your own weekly report.');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('blocks authors from bulk-reviewing their own weekly report', async () => {
+    prisma.weeklyReport.findMany.mockResolvedValue([
+      {
+        authorId: member.id,
+        id: '44444444-4444-4444-8444-444444444444',
+        status: WeeklyReportStatus.SUBMITTED,
+      },
+    ]);
+    const service = await resolveService(WeeklyReportsService, [
+      { provide: NotificationsService, useValue: notifications },
+      { provide: PrismaService, useValue: prisma },
+    ]);
+
+    await expect(
+      service.bulkReview(
+        {
+          ids: ['44444444-4444-4444-8444-444444444444'],
+          status: WeeklyReportStatus.REVIEWED,
+        },
+        member,
+      ),
+    ).rejects.toThrow('You cannot review your own weekly report.');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('requires actionable guidance when changes are requested', async () => {
     prisma.weeklyReport.findUnique.mockResolvedValue({
       authorId: member.id,

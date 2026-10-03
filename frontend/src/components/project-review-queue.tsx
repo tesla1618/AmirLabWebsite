@@ -18,6 +18,7 @@ import {
   WorkspaceRow,
 } from "@/components/ui/workspace-surface";
 import { useNotifications } from "@/components/notification-provider";
+import { useAuth } from "@/components/auth-provider";
 import type { ReviewIssue } from "@/lib/review-issues";
 import {
   ReviewIssueStamp,
@@ -30,6 +31,7 @@ interface ChangeRequest {
   kind: string;
   payload: unknown;
   submittedAt: string;
+  submittedById: string;
   submittedBy: { email: string | null; person: { fullName: string } | null };
   project: { researchItem: { title: string | null } };
   reviewIssues?: ReviewIssue[];
@@ -37,6 +39,7 @@ interface ChangeRequest {
 
 export function ProjectReviewQueue() {
   const { refreshUnreadCount } = useNotifications();
+  const { user } = useAuth();
   const [items, setItems] = useState<ChangeRequest[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -107,7 +110,12 @@ export function ProjectReviewQueue() {
     void refreshUnreadCount().catch(() => undefined);
   }
 
-  const bulk = useBulkSelection(items.map(({ id }) => id));
+  const blockedIds = new Set(
+    items.filter((item) => item.submittedById === user?.id).map(({ id }) => id),
+  );
+  const bulk = useBulkSelection(
+    items.filter(({ id }) => !blockedIds.has(id)).map(({ id }) => id),
+  );
   const selectedItems = items.filter(({ id }) => bulk.isSelected(id));
   const selectedProjectCounts = selectedItems.reduce((counts, item) => {
     counts.set(item.projectId, (counts.get(item.projectId) ?? 0) + 1);
@@ -257,6 +265,7 @@ export function ProjectReviewQueue() {
                       ariaLabel={`Select ${item.project.researchItem.title ?? "project"} change review`}
                       checked={bulk.isSelected(item.id)}
                       className="gap-0"
+                      disabled={blockedIds.has(item.id)}
                       id={`project-review-select-${item.id}`}
                       onCheckedChange={(checked) =>
                         bulk.toggle(item.id, checked)
@@ -311,7 +320,11 @@ export function ProjectReviewQueue() {
                       "Loading submission provenance"
                     )}
                   </p>
-                  {item && issuesFor(item)[0] ? (
+                  {item && blockedIds.has(item.id) ? (
+                    <SemanticStatus tone="warning">
+                      You cannot review your own project change.
+                    </SemanticStatus>
+                  ) : item && issuesFor(item)[0] ? (
                     <SemanticStatus
                       loading={loading}
                       tone={issuesFor(item)[0].tone ?? "warning"}
@@ -358,11 +371,15 @@ export function ProjectReviewQueue() {
                         "Apply this project change and publish it to the workspace record.",
                       confirmLabel: "Approve change",
                       confirmTitle: "Approve this project change?",
-                      disabled: Boolean(item && itemReviewIssues(item).length),
+                      disabled:
+                        Boolean(item && itemReviewIssues(item).length) ||
+                        Boolean(item && blockedIds.has(item.id)),
                       label:
-                        item && itemReviewIssues(item).length
-                          ? "Needs attention"
-                          : "Approve",
+                        item && blockedIds.has(item.id)
+                          ? "You cannot review your own project change."
+                          : item && itemReviewIssues(item).length
+                            ? "Needs attention"
+                            : "Approve",
                       status: "APPROVED",
                       tone: "primary",
                     },
@@ -371,7 +388,11 @@ export function ProjectReviewQueue() {
                         "Reject this project change and show the reviewer note to the submitting member.",
                       confirmLabel: "Reject change",
                       confirmTitle: "Reject this project change?",
-                      label: "Reject",
+                      disabled: Boolean(item && blockedIds.has(item.id)),
+                      label:
+                        item && blockedIds.has(item.id)
+                          ? "You cannot review your own project change."
+                          : "Reject",
                       notePlaceholder:
                         "Explain why this project change was rejected.",
                       requiresNote: true,

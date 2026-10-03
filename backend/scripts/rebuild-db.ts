@@ -32,6 +32,7 @@ import { seedAdminCredentials } from './seed-credentials';
 import {
   type AmirSeedData,
   type SeedPaper,
+  firstKnownContributorSourceIdForSeed,
   missingSeedAvatarFiles,
   readSeedData,
   seedAssetRoot,
@@ -94,6 +95,7 @@ export async function rebuildDatabase() {
         passwordHash,
         passwordSetAt: new Date(),
         role: PlatformRole.ADMIN,
+        isSystemAccount: true,
         status: AccountStatus.ACTIVE,
       },
     });
@@ -248,10 +250,16 @@ export async function rebuildDatabase() {
       }
     }
 
+    const knownContributorSourceIds = new Set(userIdBySource.keys());
     for (const paper of data.papers) {
-      const firstKnownSubmitterId = paper.contributorSourceIds
-        .map((sourceId) => userIdBySource.get(sourceId))
-        .find((value): value is string => Boolean(value));
+      const firstKnownContributorSourceId =
+        firstKnownContributorSourceIdForSeed(
+          paper.contributorSourceIds,
+          knownContributorSourceIds,
+        );
+      const firstKnownSubmitterId = firstKnownContributorSourceId
+        ? (userIdBySource.get(firstKnownContributorSourceId) ?? null)
+        : null;
       const researchItem = await prisma.researchItem.create({
         data: {
           canonicalUrl: paper.canonicalUrl,
@@ -259,7 +267,7 @@ export async function rebuildDatabase() {
           legacyUrl: paper.sourceUrl,
           reviewStatus: ReviewStatus.NEEDS_REVIEW,
           slug: paperSlug(paper),
-          submittedById: firstKnownSubmitterId ?? admin.id,
+          submittedById: firstKnownSubmitterId,
           title: paper.title,
           type: ResearchItemType.PAPER,
           paper: {
@@ -270,6 +278,18 @@ export async function rebuildDatabase() {
               venue: paper.venue,
               year: paper.year,
             },
+          },
+        },
+      });
+      await prisma.auditRecord.create({
+        data: {
+          action: 'research.imported',
+          actorId: admin.id,
+          entityId: researchItem.id,
+          entityType: 'ResearchItem',
+          details: {
+            sourceId: paper.sourceId,
+            ownerSourceId: firstKnownContributorSourceId,
           },
         },
       });

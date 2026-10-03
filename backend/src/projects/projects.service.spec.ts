@@ -220,6 +220,68 @@ describe('ProjectsService project review policy', () => {
     expect(result).toEqual({ status: ProjectChangeStatus.APPROVED });
   });
 
+  it('rejects mixed self-review bulk decisions before any transaction', async () => {
+    const prisma = {
+      $transaction: jest.fn(),
+      projectChangeRequest: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'self-change-id',
+            baseVersion: 1,
+            kind: ProjectChangeKind.DETAILS,
+            project: { researchItem: {}, version: 1 },
+            projectId: 'self-project-id',
+            status: ProjectChangeStatus.NEEDS_REVIEW,
+            submittedById: 'reviewer-id',
+          },
+          {
+            id: 'other-change-id',
+            baseVersion: 1,
+            kind: ProjectChangeKind.DETAILS,
+            project: { researchItem: {}, version: 1 },
+            projectId: 'other-project-id',
+            status: ProjectChangeStatus.NEEDS_REVIEW,
+            submittedById: 'other-id',
+          },
+        ]),
+      },
+    };
+    const bulkService = Object.assign(
+      Object.create(ProjectsService.prototype),
+      {
+        collaboration: { broadcastMessages: jest.fn() },
+        notifications: { createMany: jest.fn() },
+        prisma,
+      },
+    ) as ProjectsService;
+    const reviewer = {
+      email: 'reviewer@example.org',
+      id: 'reviewer-id',
+      person: null,
+      role: PlatformRole.ADMIN,
+      status: 'ACTIVE',
+    } as AuthenticatedUser;
+
+    for (const status of [
+      ProjectChangeStatus.APPROVED,
+      ProjectChangeStatus.REJECTED,
+    ]) {
+      await expect(
+        bulkService.bulkReview(
+          {
+            ids: ['self-change-id', 'other-change-id'],
+            status,
+            ...(status === ProjectChangeStatus.REJECTED
+              ? { note: 'Not allowed' }
+              : {}),
+          },
+          reviewer,
+        ),
+      ).rejects.toThrow('You cannot review your own project change.');
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('unarchives a project as verified while keeping the public page disabled', async () => {
     const admin = {
       id: 'admin-1',

@@ -3,7 +3,13 @@
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import { useReviewSelection } from "@/lib/use-review-selection";
-import { useEffect, useState, type SyntheticEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  type SyntheticEvent,
+} from "react";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { useReviewIssues } from "@/lib/use-review-issues";
 import type { ReviewIssue } from "@/lib/review-issues";
@@ -26,6 +32,8 @@ import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { StatePanel } from "@/components/state-panel";
 import type { PaginatedResponse } from "@/lib/types";
 import { useNotifications } from "@/components/notification-provider";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { applyResearchLiveEvent } from "@/lib/research-live-events";
 import {
   ReviewSplit,
   WorkspaceRuleBand,
@@ -39,6 +47,8 @@ interface ReviewResearch {
   legacyUrl: string | null;
   type: "PAPER" | "DATASET";
   reviewStatus: "NEEDS_REVIEW" | "CHANGES_REQUESTED" | "PUBLISHED" | "REJECTED";
+  automationVersion: number;
+  automationState: "IDLE" | "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
   paper: {
     citation: string | null;
     doi: string | null;
@@ -56,7 +66,8 @@ interface ReviewResearch {
     status: "PENDING" | "FETCHED" | "UNAVAILABLE" | "FAILED";
     failureReason: string | null;
     fetchedAt: string | null;
-    metadata: { authors?: Array<{ name: string; orcid?: string }> } | null;
+    metadata: { authors?: Array<{ name: string; orcid?: string }>; manuallyVerified?: boolean; note?: string } | null;
+    updatedAt?: string;
   } | null;
   reviewIssues?: ReviewIssue[];
   contributors: Array<{
@@ -73,9 +84,11 @@ interface ReviewResearch {
       requestedBy: { email: string | null } | null;
     }>;
   }>;
+  submittedById: string | null;
   submittedBy: {
     email: string | null;
-    person: { fullName: string } | null;
+    isSystemAccount?: boolean;
+    person: { id: string; fullName: string } | null;
   } | null;
 }
 
@@ -113,6 +126,8 @@ function loadingResearchItem(index = 0): ReviewResearch {
     legacyUrl: null,
     type: "PAPER",
     reviewStatus: "NEEDS_REVIEW",
+    automationVersion: 0,
+    automationState: "IDLE",
     paper: {
       citation: "Loading citation",
       doi: null,
@@ -134,12 +149,18 @@ function loadingResearchItem(index = 0): ReviewResearch {
       person: null,
       matches: [],
     })),
+    submittedById: null,
     submittedBy: null,
   };
 }
 
 export function ResearchReviewQueue() {
-  const { refreshUnreadCount, showToast } = useNotifications();
+  const {
+    refreshUnreadCount,
+    researchRefreshVersion,
+    showToast,
+    subscribeResearchEvents,
+  } = useNotifications();
   const [items, setItems] = useState<ReviewResearch[]>([]);
   const [result, setResult] = useState<PaginatedResponse<ReviewResearch>>();
   const [focusedItem, setFocusedItem] = useState<ReviewResearch>();
@@ -153,6 +174,7 @@ export function ResearchReviewQueue() {
   const [sort, setSort] = useState("OLDEST");
   const [reload, setReload] = useState(0);
   const [people, setPeople] = useState<LinkablePerson[]>([]);
+  const [submitters, setSubmitters] = useState<LinkablePerson[]>([]);
   const [manualPeople, setManualPeople] = useState<Record<string, string>>({});
   const [relationBusy, setRelationBusy] = useState<Set<string>>(
     () => new Set(),
@@ -170,8 +192,10 @@ export function ResearchReviewQueue() {
     });
   }
   const [editingId, setEditingId] = useState<string>();
+  const [editSnapshot, setEditSnapshot] = useState<ReviewResearch>();
+  const [editDirty, setEditDirty] = useState(false);
+  const [discardEditor, setDiscardEditor] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
-  const [sourcePollTick, setSourcePollTick] = useState(0);
   const actionIssues = useReviewIssues();
   const { selectedId: selected, select } = useReviewSelection(
     "/workspace/research",
@@ -192,6 +216,9 @@ export function ResearchReviewQueue() {
   }
 
   useEffect(() => {
+    void apiRequest<LinkablePerson[]>("/research/submitters", { method: "GET" })
+      .then(setSubmitters)
+      .catch(() => setError("Research owners could not be loaded. Refresh to retry."));
     void apiRequest<LinkablePerson[]>("/research-connections/people", {
       method: "GET",
     })
@@ -240,7 +267,7 @@ export function ResearchReviewQueue() {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [page, reload, search, sort, status, type]);
+  }, [page, reload, researchRefreshVersion, search, sort, status, type]);
 
   // A linked record outside the current queue view opens in the detail pane
   // only; it is never merged into the paginated list.
@@ -270,61 +297,56 @@ export function ResearchReviewQueue() {
     };
   }, [focusedItem?.id, items, result, selected]);
 
-  const pendingSourceId = [focusedItem, ...items].find(
-    (candidate) => candidate?.sourceSnapshot?.status === "PENDING",
-  )?.id;
+  const refreshResearchItem = useCallback(
+    async (itemId: string): Promise<void> => {
+      try {
+        const updated = await apiRequest<ReviewResearch>(
+          `/research-review/${itemId}`,
+          { method: "GET" },
+        );
+        setItems((current) =>
+          current.map((candidate) =>
+            candidate.id === updated.id ? updated : candidate,
+          ),
+        );
+        setFocusedItem((current) =>
+          current?.id === updated.id ? updated : current,
+        );
+      } catch {
+        setError(
+          "The review was saved, but the updated contributor data could not be loaded.",
+        );
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!pendingSourceId) return;
-    let active = true;
-    const timeout = window.setTimeout(() => {
-      void apiRequest<ReviewResearch>(`/research-review/${pendingSourceId}`, {
-        method: "GET",
-      })
-        .then((updated) => {
-          if (!active) return;
-          setItems((current) =>
-            current.map((candidate) =>
-              candidate.id === updated.id ? updated : candidate,
-            ),
-          );
-          setFocusedItem((current) =>
-            current?.id === updated.id ? updated : current,
-          );
-          if (updated.sourceSnapshot?.status === "PENDING") {
-            setSourcePollTick((current) => current + 1);
-          }
-        })
-        .catch(() => {
-          if (active) setSourcePollTick((current) => current + 1);
-        });
-    }, 2500);
-    return () => {
-      active = false;
-      window.clearTimeout(timeout);
-    };
-  }, [pendingSourceId, sourcePollTick]);
-
-  async function refreshResearchItem(itemId: string): Promise<void> {
-    try {
-      const updated = await apiRequest<ReviewResearch>(
-        `/research-review/${itemId}`,
-        { method: "GET" },
-      );
+    return subscribeResearchEvents((event) => {
       setItems((current) =>
         current.map((candidate) =>
-          candidate.id === updated.id ? updated : candidate,
+          candidate.id === event.researchItemId
+            ? { ...candidate, ...applyResearchLiveEvent(candidate, event) }
+            : candidate,
         ),
       );
       setFocusedItem((current) =>
-        current?.id === updated.id ? updated : current,
+        current?.id === event.researchItemId
+          ? { ...current, ...applyResearchLiveEvent(current, event) }
+          : current,
       );
-    } catch {
-      setError(
-        "The review was saved, but the updated contributor data could not be loaded.",
-      );
-    }
-  }
+      setReload((current) => current + 1);
+      if (selected === event.researchItemId) {
+        void refreshResearchItem(event.researchItemId);
+      }
+    });
+  }, [refreshResearchItem, selected, subscribeResearchEvents]);
+
+  useEffect(() => {
+    if (!researchRefreshVersion || !selected) return;
+    const timeout = window.setTimeout(() => void refreshResearchItem(selected), 0);
+    return () => window.clearTimeout(timeout);
+  }, [researchRefreshVersion, selected, refreshResearchItem]);
 
   function captureItemError(itemId: string, error: ApiRequestError) {
     if (error.issues.length) actionIssues.capture(error);
@@ -343,10 +365,10 @@ export function ResearchReviewQueue() {
     note?: string;
     status: ResearchDecision;
   }) {
-    if (!selected) return;
+    if (!selected || !item) return;
     setError(undefined);
     await apiRequest(`/research/${selected}/review`, {
-      body: JSON.stringify({ ...(note ? { note } : {}), status }),
+      body: JSON.stringify({ ...(note ? { note } : {}), status, expectedAutomationVersion: item.automationVersion }),
       headers: { "content-type": "application/json" },
       method: "POST",
     });
@@ -368,20 +390,22 @@ export function ResearchReviewQueue() {
     event: SyntheticEvent<HTMLFormElement, SubmitEvent>,
   ) {
     event.preventDefault();
-    if (!item || loadingDetail) return;
+    if (!item || !editSnapshot || editSnapshot.id !== item.id || loadingDetail) return;
     const form = new FormData(event.currentTarget);
     const contributors = String(form.get("contributors") ?? "")
-      .split(",")
+      .split("\n")
       .map((name) => name.trim())
       .filter(Boolean);
-    if (!contributors.length) {
-      setError("Add at least one contributor.");
+    if (!form.get("submitterPersonId")) {
+      setError("Select the person this research belongs to.");
       return;
     }
     setEditSaving(true);
     setError(undefined);
     try {
       const body: Record<string, unknown> = {
+        expectedAutomationVersion: editSnapshot.automationVersion,
+        submitterPersonId: form.get("submitterPersonId"),
         canonicalUrl: form.get("canonicalUrl"),
         contributors,
         summary: form.get("summary") || undefined,
@@ -413,9 +437,12 @@ export function ResearchReviewQueue() {
         ),
       );
       setEditingId(undefined);
+      setEditDirty(false);
       setReload((current) => current + 1);
       showToast({
-        body: "The record was returned to manual review and source/contributor verification was restarted.",
+        body: updated.sourceSnapshot?.status === "PENDING"
+          ? "Changes saved. Source verification is in progress."
+          : "Changes saved. Existing verification and publication status were preserved.",
         title: "Research record updated",
       });
     } catch (caught) {
@@ -447,8 +474,16 @@ export function ResearchReviewQueue() {
     beginRelation(id);
     setError(undefined);
     try {
+      const current =
+        items.find((candidate) => candidate.id === itemId) ??
+        (focusedItem?.id === itemId ? focusedItem : undefined);
+      if (!current) throw new Error("Research record is no longer loaded.");
       await apiRequest(`/contributor-matches/${id}/review`, {
-        body: JSON.stringify({ ...(note ? { note } : {}), status }),
+        body: JSON.stringify({
+          ...(note ? { note } : {}),
+          expectedAutomationVersion: current.automationVersion,
+          status,
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -504,8 +539,15 @@ export function ResearchReviewQueue() {
     beginRelation(key);
     setError(undefined);
     try {
+      const current =
+        items.find((candidate) => candidate.id === itemId) ??
+        (focusedItem?.id === itemId ? focusedItem : undefined);
+      if (!current) throw new Error("Research record is no longer loaded.");
       await apiRequest(`/research/${itemId}/contributors/${sortOrder}/link`, {
-        body: JSON.stringify({ personId }),
+        body: JSON.stringify({
+          expectedAutomationVersion: current.automationVersion,
+          personId,
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
@@ -601,8 +643,9 @@ export function ResearchReviewQueue() {
     }
   }
 
-  const bulk = useBulkSelection(items.map(({ id }) => id));
-  const selectedResearchItems = items.filter(({ id }) => bulk.isSelected(id));
+  const selectableItems = items;
+  const bulk = useBulkSelection(selectableItems.map(({ id }) => id));
+  const selectedResearchItems = selectableItems.filter(({ id }) => bulk.isSelected(id));
   const issuesFor = (candidate: ReviewResearch): ReviewIssue[] => [
     ...(candidate.reviewIssues ?? []),
     ...actionIssues.forItem(candidate.id),
@@ -617,7 +660,7 @@ export function ResearchReviewQueue() {
   const commonBulkActions = researchBulkActions(
     commonBulkStatuses,
     selectedResearchItems.length,
-  );
+  ).map((action) => ({ ...action, disabled: editDirty || editSaving }));
   const initialLoading = loading && !result;
   const item =
     (focusedItem?.id === selected ? focusedItem : undefined) ??
@@ -629,9 +672,11 @@ export function ResearchReviewQueue() {
     !items.some((candidate) => candidate.id === item.id),
   );
   const editing = Boolean(item && editingId === item.id);
+  const ownerMissing = Boolean(item && (!item.submittedBy?.person || item.submittedBy.isSystemAccount));
   const sourcePending =
+    item?.automationState === "QUEUED" || item?.automationState === "RUNNING" ||
     item?.sourceSnapshot?.status === "PENDING" ||
-    relationBusy.has(`discover:${item?.id}`);
+    relationBusy.has(`discover:${item?.id}`) || editDirty;
   const hasProposedMatches = Boolean(
     item?.contributors.some((contributor) =>
       contributor.matches.some((match) => match.status === "PROPOSED"),
@@ -648,6 +693,7 @@ export function ResearchReviewQueue() {
     await apiRequest("/research-review/bulk-review", {
       body: JSON.stringify({
         ids: selectedResearchItems.map(({ id }) => id),
+        expectedAutomationVersions: selectedResearchItems.map(({ automationVersion }) => automationVersion),
         ...(note ? { note } : {}),
         status: decisionStatus,
       }),
@@ -677,6 +723,17 @@ export function ResearchReviewQueue() {
 
   return (
     <div className="grid min-w-0 gap-4">
+      <ConfirmDialog
+        open={discardEditor}
+        title="Discard unsaved changes?"
+        description="Your edits have not been saved. Keep editing or discard them."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        tone="danger"
+        busy={editSaving}
+        onCancel={() => setDiscardEditor(false)}
+        onConfirm={() => { setDiscardEditor(false); setEditingId(undefined); setEditDirty(false); }}
+      />
       <WorkspaceRuleBand contentClassName="grid min-w-0 grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(140px,.7fr))] items-end gap-[.8rem] px-[var(--workspace-gutter)] py-3.5 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1 max-[640px]:px-4">
         <ToolbarSearchField
           id="research-review-search"
@@ -751,7 +808,7 @@ export function ResearchReviewQueue() {
           onSubmit={decideBulk}
           onSuccess={actionIssues.clear}
           selectAllState={bulk.selectAllState}
-          selectableCount={items.length}
+          selectableCount={selectableItems.length}
           selectedCount={bulk.selectedCount}
           successBody={(decisionStatus) =>
             `${selectedResearchItems.length} research review${selectedResearchItems.length === 1 ? "" : "s"} moved to ${decisionStatus.replaceAll("_", " ").toLowerCase()}.`
@@ -821,6 +878,7 @@ export function ResearchReviewQueue() {
                               ariaLabel={`Select ${researchLabel(candidate)} review`}
                               checked={bulk.isSelected(candidate.id)}
                               className="gap-0"
+                              disabled={editDirty}
                               id={`research-review-select-${candidate.id}`}
                               onCheckedChange={(checked) =>
                                 bulk.toggle(candidate.id, checked)
@@ -831,7 +889,13 @@ export function ResearchReviewQueue() {
                         <button
                           className="grid min-h-[88px] w-full min-w-0 cursor-pointer gap-[.4rem] border-0 bg-transparent p-[.85rem_.9rem] pr-10 text-left"
                           disabled={loadingRows}
-                          onClick={() => select(candidate.id)}
+                          onClick={() => {
+                            if (editDirty || editSaving) {
+                              showToast({ title: "Unsaved changes", body: "Save or cancel your edits before selecting another record." });
+                              return;
+                            }
+                            select(candidate.id);
+                          }}
                           type="button"
                         >
                           <div className="w-fit capitalize">
@@ -945,22 +1009,29 @@ export function ResearchReviewQueue() {
                         : null}
                       <ButtonControl
                         compact
-                        disabled={loadingDetail}
+                        disabled={loadingDetail || editSaving}
                         loading={loadingDetail}
-                        onClick={() =>
+                        onClick={() => {
+                          if (editing && editDirty) { setDiscardEditor(true); return; }
+                          setEditDirty(false);
+                          // Keep an open draft mounted if live refresh removes its queue row.
+                          setFocusedItem(item);
+                          setEditSnapshot(item);
                           setEditingId((current) =>
                             current === item.id ? undefined : item.id,
-                          )
-                        }
+                          );
+                        }}
                         variant="secondary"
                       >
-                        {editing ? "Close editor" : "Edit record"}
+                        {editing ? "Cancel" : "Edit record"}
                       </ButtonControl>
                     </div>
                   </header>
                   {editing ? (
                     <ResearchRecordEditor
-                      item={item}
+                      item={editSnapshot ?? item}
+                      submitters={submitters}
+                      onDirtyChange={setEditDirty}
                       onSubmit={saveRecordEdit}
                       saving={editSaving}
                     />
@@ -1006,12 +1077,34 @@ export function ResearchReviewQueue() {
                         {!item.canonicalUrl
                           ? "No source URL"
                           : sourcePending
-                            ? "Checking source…"
+                             ? "Retry source check"
                             : item.sourceSnapshot
                               ? "Check source again"
                               : "Check source"}
                       </ButtonControl>
                     </div>
+                    {!loadingDetail && item.canonicalUrl ? (
+                      <ReviewActions
+                        actions={[{
+                          status: "VERIFIED", label: "Verify source manually", tone: "secondary",
+                          disabled: editDirty,
+                          requiresNote: true, notePlaceholder: "Describe the source and authors you checked.",
+                          confirmTitle: "Complete source verification?", confirmLabel: "Mark source verified",
+                          confirmDescription: "This records your verification and supersedes any pending automated source check. Contributor matches and publication are reviewed separately.",
+                        }]}
+                        noteLabel="Source evidence"
+                        onSubmit={async ({ note }) => {
+                          await apiRequest(`/research/${item.id}/verify-source`, {
+                            method: "POST", headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ note, expectedAutomationVersion: item.automationVersion }),
+                          });
+                          await refreshResearchItem(item.id);
+                        }}
+                        successTitle="Source verified" successBody={() => "Your source verification was recorded. You can now resolve authors and publish."}
+                      />
+                    ) : null}
+                    {item.sourceSnapshot?.updatedAt ? <p className="m-0 text-xs text-ink-muted">Last source activity: {new Date(item.sourceSnapshot.updatedAt).toLocaleString()}</p> : null}
+                    {item.sourceSnapshot?.metadata?.manuallyVerified ? <SemanticStatus tone="success">Manually verified: {item.sourceSnapshot.metadata.note}</SemanticStatus> : null}
                     {loadingDetail ? (
                       <span
                         className={loadingPlaceholder(true, "label", "long")}
@@ -1205,6 +1298,7 @@ export function ResearchReviewQueue() {
                               <ButtonControl
                                 compact
                                 disabled={
+                                  sourcePending ||
                                   !selectedPersonId ||
                                   verifiedCurrent ||
                                   verificationBusy
@@ -1235,7 +1329,7 @@ export function ResearchReviewQueue() {
                                       confirmLabel: "Reject suggestion",
                                       confirmTitle:
                                         "Reject this contributor match?",
-                                      disabled: relationBusy.has(
+                                      disabled: sourcePending || relationBusy.has(
                                         rejectMatch.id,
                                       ),
                                       label: "Reject",
@@ -1341,6 +1435,7 @@ export function ResearchReviewQueue() {
                             "The public/rejected decision is retained in history and the record returns to the manual verification queue.",
                           confirmLabel: "Reopen record",
                           confirmTitle: "Reopen this research record?",
+                          disabled: editDirty,
                           label: "Reopen for review",
                           notePlaceholder:
                             "Explain why this record needs to be reviewed again.",
@@ -1370,8 +1465,10 @@ export function ResearchReviewQueue() {
                             "The record becomes public and a verified paper may trigger rank promotion.",
                           confirmLabel: "Publish verified record",
                           confirmTitle: "Publish this research record?",
-                          disabled: sourcePending || hasProposedMatches,
-                          label: sourcePending
+                          disabled: editDirty || ownerMissing || !item.contributors.length || sourcePending || hasProposedMatches,
+                          label: ownerMissing
+                            ? "Select Submitted by before publishing"
+                            : !item.contributors.length ? "Add authors before publishing" : sourcePending
                             ? "Source check in progress"
                             : hasProposedMatches
                               ? "Resolve contributor matches"
@@ -1384,6 +1481,7 @@ export function ResearchReviewQueue() {
                             "The submission returns to the member with your reviewer note.",
                           confirmLabel: "Request changes",
                           confirmTitle: "Send this back for changes?",
+                          disabled: editDirty,
                           label: "Add review",
                           notePlaceholder:
                             "Explain what must change before this can be approved.",
@@ -1397,6 +1495,7 @@ export function ResearchReviewQueue() {
                             "The submission leaves the active queue as rejected.",
                           confirmLabel: "Reject submission",
                           confirmTitle: "Reject this research record?",
+                          disabled: editDirty,
                           label: "Reject",
                           notePlaceholder:
                             "Explain why this submission was rejected.",
@@ -1436,31 +1535,85 @@ export function ResearchReviewQueue() {
 
 function ResearchRecordEditor({
   item,
+  submitters,
+  onDirtyChange,
   onSubmit,
   saving,
 }: {
   item: ReviewResearch;
+  submitters: LinkablePerson[];
+  onDirtyChange: (dirty: boolean) => void;
   onSubmit: (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => void;
   saving: boolean;
 }) {
+  const [ownerId, setOwnerId] = useState(item.submittedBy?.isSystemAccount ? "" : item.submittedBy?.person?.id ?? "");
+  const [dirty, setDirty] = useState(false);
+  const [sourceChanged, setSourceChanged] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const initial = useRef<string | undefined>(undefined);
+  const checkChanges = useCallback(() => {
+    if (!formRef.current) return;
+    const form = new FormData(formRef.current);
+    const serialized = JSON.stringify([...form.entries()]);
+    if (initial.current === undefined) initial.current = serialized;
+    const changed = initial.current !== serialized;
+    setDirty(changed);
+    onDirtyChange(changed);
+    setSourceChanged(
+      String(form.get("title") ?? "").trim() !== (item.title ?? "") ||
+      form.get("canonicalUrl") !== (item.canonicalUrl ?? "") ||
+      String(form.get("doi") ?? "").trim() !== (item.paper?.doi ?? "") ||
+      String(form.get("contributors") ?? "").split("\n").map((name) => name.trim()).filter(Boolean).join("\n") !== item.contributors.map(({ displayName }) => displayName).join("\n"),
+    );
+  }, [item, onDirtyChange]);
+  useEffect(() => { checkChanges(); }, [ownerId, checkChanges]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   return (
     <form
+      ref={formRef}
+      onChange={checkChanges}
       className="grid gap-4 border border-line-strong bg-canvas p-[clamp(1rem,2vw,1.35rem)]"
       onSubmit={onSubmit}
     >
+      <fieldset disabled={saving} className="contents">
       <div className="grid gap-1">
         <span className="font-mono text-[.62rem] uppercase tracking-[.08em] text-brand">
           Record editor
         </span>
         <strong className="font-sans text-[1.2rem] font-normal">
-          Edit and re-run verification
+          Edit research record
         </strong>
         <p className="m-0 text-[.78rem] leading-[1.5] text-ink-muted">
-          Saving changes returns the record to Needs review and restarts
-          canonical-source and contributor matching.
+          Save corrections without repeating completed checks. Changing the title, source URL, DOI or authors restarts verification.
         </p>
+        {dirty ? <SemanticStatus tone="warning">Unsaved changes</SemanticStatus> : null}
+        {sourceChanged ? <SemanticStatus tone="warning">Saving these changes restarts source verification{item.reviewStatus === "PUBLISHED" ? " and returns this published record to review" : ""}.</SemanticStatus> : null}
       </div>
       <div className="grid grid-cols-2 gap-4 max-[700px]:grid-cols-1">
+        <FormField className="col-span-full" label="Submitted by">
+          <SearchableSelect
+            ariaLabel="Submitted by"
+            disabled={saving}
+            options={submitters.map(({ id, fullName }) => ({ label: fullName, value: id }))}
+            onValueChange={setOwnerId}
+            value={ownerId}
+            placeholder="Select the person this research belongs to…"
+          />
+          <InputControl
+            aria-hidden="true"
+            className="sr-only"
+            name="submitterPersonId"
+            readOnly
+            tabIndex={-1}
+            value={ownerId}
+          />
+          {!ownerId ? <SemanticStatus tone="warning">Select a registered person before saving.</SemanticStatus> : null}
+        </FormField>
         <FormField
           className="col-span-full"
           htmlFor="review-edit-title"
@@ -1489,17 +1642,17 @@ function ResearchRecordEditor({
         <FormField
           className="col-span-full"
           htmlFor="review-edit-contributors"
-          label="Contributors"
+          label="Authors"
         >
           <TextareaControl
             defaultValue={item.contributors
               .map(({ displayName }) => displayName)
-              .join(", ")}
+              .join("\n")}
             id="review-edit-contributors"
             name="contributors"
-            required
             rows={2}
           />
+          <p className="m-0 text-xs text-ink-muted">One author per line, in publication order. Incomplete records can be saved; authors are required before publication.</p>
         </FormField>
         <FormField
           className="col-span-full"
@@ -1601,10 +1754,11 @@ function ResearchRecordEditor({
         )}
       </div>
       <div className="flex justify-end">
-        <ButtonControl disabled={saving} type="submit" variant="primary">
-          Save and re-run review
+        <ButtonControl disabled={saving || !dirty || !ownerId} type="submit" variant="primary">
+          Save changes
         </ButtonControl>
       </div>
+      </fieldset>
     </form>
   );
 }
@@ -1629,7 +1783,7 @@ function researchBulkStatuses(
   const hasProposedMatches = item.contributors.some((contributor) =>
     contributor.matches.some((match) => match.status === "PROPOSED"),
   );
-  if (!sourcePending && !hasProposedMatches) statuses.unshift("PUBLISHED");
+  if (!sourcePending && !hasProposedMatches && item.contributors.length && item.submittedBy?.person && !item.submittedBy.isSystemAccount) statuses.unshift("PUBLISHED");
   return statuses;
 }
 

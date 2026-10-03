@@ -8,6 +8,7 @@ import {
   Prisma,
   ProfileReviewStatus,
   ReviewStatus,
+  SourceFetchStatus,
   WeeklyReportStatus,
 } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -36,12 +37,23 @@ export interface NotificationCreateInput {
   uniqueKey?: string;
 }
 
+export interface ResearchLiveEvent {
+  scope: 'research';
+  kind: 'source' | 'status';
+  researchItemId: string;
+  reviewStatus?: ReviewStatus;
+  sourceStatus?: SourceFetchStatus;
+}
+
+type NotificationStreamEvent =
+  { data: NotificationEvent } | { type: 'research'; data: ResearchLiveEvent };
+
+type NotificationSubscriber = Subscriber<NotificationStreamEvent>;
+
 @Injectable()
 export class NotificationsService {
-  private readonly subscribers = new Map<
-    string,
-    Set<Subscriber<{ data: NotificationEvent }>>
-  >();
+  private readonly subscribers = new Map<string, Set<NotificationSubscriber>>();
+  private readonly researchSubscribers = new Set<NotificationSubscriber>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -166,19 +178,30 @@ export class NotificationsService {
     return { updated: result.count === 1 };
   }
 
-  stream(userId: string): Observable<{ data: NotificationEvent }> {
+  stream(
+    userId: string,
+    receiveResearchEvents = false,
+  ): Observable<NotificationStreamEvent> {
     return new Observable((subscriber) => {
       const userSubscribers = this.subscribers.get(userId) ?? new Set();
       userSubscribers.add(subscriber);
       this.subscribers.set(userId, userSubscribers);
+      if (receiveResearchEvents) this.researchSubscribers.add(subscriber);
 
       return () => {
         userSubscribers.delete(subscriber);
+        this.researchSubscribers.delete(subscriber);
         if (userSubscribers.size === 0) {
           this.subscribers.delete(userId);
         }
       };
     });
+  }
+
+  publishResearchEvent(event: ResearchLiveEvent): void {
+    for (const subscriber of this.researchSubscribers) {
+      subscriber.next({ data: event, type: 'research' });
+    }
   }
 
   async notifyReviewers(input: {

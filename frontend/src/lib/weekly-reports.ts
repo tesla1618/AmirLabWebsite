@@ -11,6 +11,7 @@ export interface WeeklyReport {
   reviewNote: string | null;
   submittedAt: string | null;
   reviewedAt: string | null;
+  authorId: string;
   author: {
     email: string | null;
     person: { fullName: string } | null;

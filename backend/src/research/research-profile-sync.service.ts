@@ -27,7 +27,7 @@ export class ResearchProfileSyncService {
 
   async normalizePublishedOutputs(
     researchItemIds: readonly string[],
-    actorId: string,
+    actorId: string | null,
     transaction?: Prisma.TransactionClient,
   ): Promise<void> {
     const ids = [...new Set(researchItemIds)];
@@ -43,7 +43,7 @@ export class ResearchProfileSyncService {
 
   async normalizePublishedOutputsForPeople(
     personIds: readonly string[],
-    actorId: string,
+    actorId: string | null,
     transaction?: Prisma.TransactionClient,
   ): Promise<void> {
     const ids = [...new Set(personIds)];
@@ -53,7 +53,10 @@ export class ResearchProfileSyncService {
         where: {
           reviewStatus: ReviewStatus.PUBLISHED,
           type: { in: [ResearchItemType.PAPER, ResearchItemType.DATASET] },
-          contributors: { some: { personId: { in: ids } } },
+          OR: [
+            { contributors: { some: { personId: { in: ids } } } },
+            { submittedBy: { is: { person: { is: { id: { in: ids } } } } } },
+          ],
         },
         select: { id: true },
       });
@@ -73,7 +76,7 @@ export class ResearchProfileSyncService {
   private async normalizeWithClient(
     db: Prisma.TransactionClient,
     ids: string[],
-    actorId: string,
+    actorId: string | null,
   ): Promise<void> {
     const items = await db.researchItem.findMany({
       where: {
@@ -87,6 +90,7 @@ export class ResearchProfileSyncService {
         title: true,
         canonicalUrl: true,
         paper: { select: { doi: true } },
+        submittedBy: { select: { person: { select: { id: true } } } },
         contributors: {
           where: { personId: { not: null } },
           select: { personId: true },
@@ -95,15 +99,7 @@ export class ResearchProfileSyncService {
     });
     if (!items.length) return;
 
-    const personIds = [
-      ...new Set(
-        items.flatMap((item) =>
-          item.contributors.flatMap(({ personId }) =>
-            personId ? [personId] : [],
-          ),
-        ),
-      ),
-    ];
+    const personIds = [...new Set(items.flatMap(outputPersonIds))];
     if (!personIds.length) return;
 
     const people = await db.person.findMany({
@@ -149,8 +145,7 @@ export class ResearchProfileSyncService {
         title: item.title,
         type: item.type,
       };
-      for (const { personId } of item.contributors) {
-        if (!personId) continue;
+      for (const personId of outputPersonIds(item)) {
         const person = peopleById.get(personId);
         if (!person) continue;
 
@@ -321,7 +316,9 @@ function normalizeDoi(value: string | null): string | null {
   return normalized || null;
 }
 
-function normalizeIdentityText(value: string | null): string {
+export function normalizeIdentityText(
+  value: string | null | undefined,
+): string {
   if (!value) return '';
   return value
     .normalize('NFKD')
@@ -329,6 +326,20 @@ function normalizeIdentityText(value: string | null): string {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+}
+
+function outputPersonIds(item: {
+  contributors: Array<{ personId: string | null }>;
+  submittedBy?: { person: { id: string } | null } | null;
+}): string[] {
+  return [
+    ...new Set([
+      ...item.contributors.flatMap(({ personId }) =>
+        personId ? [personId] : [],
+      ),
+      ...(item.submittedBy?.person ? [item.submittedBy.person.id] : []),
+    ]),
+  ];
 }
 
 function jsonObject(value: Prisma.JsonValue): Prisma.InputJsonObject {

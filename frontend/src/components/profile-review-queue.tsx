@@ -17,6 +17,7 @@ import { CheckboxControl } from "@/components/ui/checkbox-control";
 import { BulkReviewBar } from "@/components/bulk-review-bar";
 import { useBulkSelection } from "@/lib/use-bulk-selection";
 import { useNotifications } from "@/components/notification-provider";
+import { useAuth } from "@/components/auth-provider";
 import {
   ReviewIssueStamp,
   SemanticStatus,
@@ -31,6 +32,7 @@ import { useReviewSelection } from "@/lib/use-review-selection";
 
 export function ProfileReviewQueue() {
   const { refreshUnreadCount } = useNotifications();
+  const { user } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<ProfileEditRequest>>();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -76,11 +78,16 @@ export function ProfileReviewQueue() {
     };
   }, [deferredSearch, page, reload, sort]);
 
-  const bulk = useBulkSelection((result?.items ?? []).map(({ id }) => id));
-  const selectedRequests = (result?.items ?? []).filter(({ id }) =>
-    bulk.isSelected(id),
-  );
   const items = result?.items ?? [];
+  const blockedIds = new Set(
+    items
+      .filter((request) => user?.person?.id === request.person.id)
+      .map(({ id }) => id),
+  );
+  const bulk = useBulkSelection(
+    items.filter(({ id }) => !blockedIds.has(id)).map(({ id }) => id),
+  );
+  const selectedRequests = items.filter(({ id }) => bulk.isSelected(id));
   const initialLoading = loading && !result;
   const { selectedId, select } = useReviewSelection(
     "/workspace/profile-reviews",
@@ -314,6 +321,7 @@ export function ProfileReviewQueue() {
                 ).map((request, row) => (
                   <ProfileQueueRow
                     checked={request ? bulk.isSelected(request.id) : false}
+                    disabled={Boolean(request && blockedIds.has(request.id))}
                     issues={request ? issuesFor(request) : []}
                     key={request?.id ?? `profile-review-loading-${row}`}
                     onCheckedChange={(checked) =>
@@ -353,6 +361,7 @@ export function ProfileReviewQueue() {
 
 function ProfileQueueRow({
   checked,
+  disabled,
   issues,
   onCheckedChange,
   onSelect,
@@ -360,6 +369,7 @@ function ProfileQueueRow({
   selected,
 }: {
   checked: boolean;
+  disabled: boolean;
   issues: ReviewIssue[];
   onCheckedChange: (checked: boolean) => void;
   onSelect: () => void;
@@ -368,6 +378,7 @@ function ProfileQueueRow({
 }) {
   const loading = !request;
   const issue = reviewIssue(issues);
+  const selfReviewReason = "You cannot review your own profile change.";
   return (
     <div
       className={cn(
@@ -380,6 +391,7 @@ function ProfileQueueRow({
           <CheckboxControl
             ariaLabel={`Select ${request.person.fullName} profile review`}
             checked={checked}
+            disabled={disabled}
             className="gap-0"
             id={`profile-review-select-${request.id}`}
             onCheckedChange={onCheckedChange}
@@ -420,7 +432,9 @@ function ProfileQueueRow({
             ? `${profileChangeCount(request)} fields · ${new Date(request.submittedAt).toLocaleDateString()}`
             : "0 fields · loading date"}
         </span>
-        {issue ? (
+        {disabled ? (
+          <SemanticStatus tone="warning">{selfReviewReason}</SemanticStatus>
+        ) : issue ? (
           <SemanticStatus tone={issue.tone ?? "error"}>
             {issue.message}
           </SemanticStatus>

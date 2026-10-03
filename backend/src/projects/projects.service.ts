@@ -633,6 +633,20 @@ export class ProjectsService {
         })),
       );
     }
+    const selfReviewRequests = requests.filter(
+      (request) => request.submittedById === reviewer.id,
+    );
+    if (selfReviewRequests.length) {
+      throw reviewBadRequest(
+        'You cannot review your own project change.',
+        selfReviewRequests.map(({ id }) => ({
+          code: 'PROJECT_SELF_REVIEW',
+          itemId: id,
+          message: 'You cannot review your own project change.',
+          tone: 'error' as const,
+        })),
+      );
+    }
 
     const reviewedAt = new Date();
     if (dto.status === ProjectChangeStatus.REJECTED) {

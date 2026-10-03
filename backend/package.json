@@ -27,7 +27,7 @@
     "db:cluster:reset": "node scripts/local-postgres.mjs reset",
     "db:reset": "pnpm run db:rebuild",
     "db:generate": "prisma generate",
-    "db:push": "node scripts/migrate-profile-entry-labels.mjs && node scripts/migrate-single-email.mjs && prisma db push && prisma generate",
+    "db:push": "node scripts/migrate-profile-entry-labels.mjs && node scripts/migrate-single-email.mjs && prisma db push && node scripts/migrate-research-system-accounts.mjs && prisma generate",
     "seed:validate": "tsx scripts/validate-seed-data.ts",
     "db:seed": "tsx scripts/rebuild-db.ts",
     "db:seed:if-empty": "tsx scripts/seed-if-empty.ts",
@@ -40,7 +40,8 @@
     "lint:fix": "eslint \"{src,test,scripts}/**/*.ts\" --fix",
     "typecheck": "prisma generate && tsc --noEmit -p tsconfig.json",
     "verify:production": "pnpm run typecheck && pnpm run lint && pnpm run verify:safety && pnpm run test --runInBand && pnpm run verify:api-boundary && pnpm run verify:recovery-research && pnpm run build",
-    "verify:safety": "tsx scripts/verify-production-safety.ts"
+    "verify:safety": "tsx scripts/verify-production-safety.ts",
+    "test:migrations": "node --test test/research-system-accounts.migration.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1140.0",

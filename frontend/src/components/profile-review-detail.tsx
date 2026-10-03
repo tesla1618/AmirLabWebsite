@@ -10,6 +10,7 @@ import type { ProfileEditPayload, ProfileEditRequest } from "@/lib/types";
 import { ReviewActions } from "@/components/review-actions";
 import { StatePanel } from "@/components/state-panel";
 import { useNotifications } from "@/components/notification-provider";
+import { useAuth } from "@/components/auth-provider";
 import { profileValuesEqual } from "@/lib/profile-changes";
 import {
   ReviewIssueStamp,
@@ -41,6 +42,7 @@ export function ProfileReviewDetail({
   onDecided: () => void;
 }) {
   const { refreshUnreadCount } = useNotifications();
+  const { user } = useAuth();
   const [request, setRequest] = useState<ProfileEditRequest>();
   const [message, setMessage] = useState<string>();
   const [actionIssues, setActionIssues] = useState<ReviewIssue[]>([]);
@@ -158,6 +160,10 @@ export function ProfileReviewDetail({
   const blockingIssue = reviewIssues.find(
     ({ tone }) => (tone ?? "error") === "error",
   );
+  const selfReview = Boolean(
+    user?.person?.id && request?.person.id === user.person.id,
+  );
+  const selfReviewReason = "You cannot review your own profile change.";
 
   return (
     <div className="grid gap-4" data-loading={loading || undefined}>
@@ -236,8 +242,8 @@ export function ProfileReviewDetail({
                   "These changes will atomically update the public profile. If the member saved again, the backend will refuse this stale decision.",
                 confirmLabel: "Approve changes",
                 confirmTitle: "Approve the latest profile?",
-                disabled: Boolean(blockingIssue),
-                label: "Approve changes",
+                disabled: Boolean(blockingIssue) || selfReview,
+                label: selfReview ? selfReviewReason : "Approve changes",
                 status: "APPROVED",
                 tone: "primary",
               },
@@ -246,7 +252,8 @@ export function ProfileReviewDetail({
                   "These changes will be rejected with the reviewer note shown to the member.",
                 confirmLabel: "Reject changes",
                 confirmTitle: "Reject these profile changes?",
-                label: "Reject",
+                disabled: selfReview,
+                label: selfReview ? selfReviewReason : "Reject",
                 notePlaceholder: "Explain what the member needs to fix.",
                 requiresNote: true,
                 status: "REJECTED",

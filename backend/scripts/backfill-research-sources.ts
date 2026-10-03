@@ -41,6 +41,15 @@ async function main(): Promise<void> {
       });
     }
     await prisma.$transaction(async (transaction) => {
+      await transaction.researchItem.update({
+        where: { id: paper.id },
+        data: {
+          automationClaimedAt: null,
+          automationOwner: null,
+          automationState: 'QUEUED',
+          automationVersion: { increment: 1 },
+        },
+      });
       await transaction.researchSourceSnapshot.upsert({
         where: { researchItemId: paper.id },
         create: {

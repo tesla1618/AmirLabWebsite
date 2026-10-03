@@ -53,4 +53,30 @@ describe('JobsService active deduplication', () => {
     });
     expect(prisma.job.create).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps retrying when another enqueue wins key release race', async () => {
+    const prisma = {
+      job: {
+        create: jest
+          .fn()
+          .mockRejectedValueOnce({ code: 'P2002' })
+          .mockRejectedValueOnce({ code: 'P2002' })
+          .mockResolvedValueOnce({ id: 'fresh-job' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'completed-job',
+          status: JobStatus.SUCCEEDED,
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const service = await resolveService(JobsService, [
+      { provide: PrismaService, useValue: prisma },
+    ]);
+
+    await expect(
+      service.enqueueWhileActive('DISCOVER', { researchItemId: 'item' }, 'key'),
+    ).resolves.toBe('fresh-job');
+    expect(prisma.job.create).toHaveBeenCalledTimes(3);
+    expect(prisma.job.updateMany).toHaveBeenCalledTimes(2);
+  });
 });

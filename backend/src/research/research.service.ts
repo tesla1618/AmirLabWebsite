@@ -11,6 +11,7 @@ import {
   PlatformRole,
   PositionStatus,
   EngagementType,
+  ResearchAutomationState,
   ResearchItemType,
   ReviewStatus,
   SourceFetchStatus,
@@ -29,6 +30,8 @@ import type {
   BulkReviewResearchDto,
   ReviewResearchDto,
   SubmitResearchDto,
+  UpdateResearchDto,
+  VerifyResearchSourceDto,
 } from './dto/research.dto';
 import {
   ResearchReviewQueryDto,
@@ -116,16 +119,32 @@ export class ResearchService {
         },
         metrics: true,
         user: { select: { email: true } },
-        contributions: {
-          where: { researchItem: publicResearchWhere() },
-          orderBy: { researchItem: { publishedAt: 'desc' } },
-          include: { researchItem: { include: RESEARCH_INCLUDE } },
-        },
       },
     });
     if (!person) throw new NotFoundException('Person not found');
+    // Accountable submissions are profile outputs, not evidence of authorship.
+    // Query items directly so both relationships yield one output without a fake contributor.
+    const outputs = await this.prisma.researchItem.findMany({
+      where: {
+        AND: [
+          publicResearchWhere(),
+          {
+            OR: [
+              { contributors: { some: { personId: person.id } } },
+              { submittedBy: { is: { person: { is: { id: person.id } } } } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'asc' }],
+      include: RESEARCH_INCLUDE,
+    });
     const { user, ...profile } = person;
-    return { ...publicPerson(profile), email: user?.email ?? null };
+    return {
+      ...publicPerson(profile),
+      email: user?.email ?? null,
+      contributions: outputs.map((researchItem) => ({ researchItem })),
+    };
   }
 
   research(type?: ResearchItemType) {
@@ -546,6 +565,66 @@ export class ResearchService {
     };
   }
 
+  submitters() {
+    return this.prisma.person.findMany({
+      where: { user: { is: availableResearchOwner() } },
+      select: { id: true, fullName: true, slug: true },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
+  private async resolveSubmitter(personId?: string) {
+    if (!personId) {
+      throw new BadRequestException(
+        'Select the person this research belongs to.',
+      );
+    }
+    const person = await this.prisma.person.findFirst({
+      where: { id: personId, user: { is: availableResearchOwner() } },
+      select: { id: true, userId: true },
+    });
+    if (!person?.userId) {
+      throw new BadRequestException(
+        'Select a registered person, not a generic operating account.',
+      );
+    }
+    return { id: person.id, userId: person.userId };
+  }
+
+  private assertPublishableOwner(item: {
+    id: string;
+    submittedById: string | null;
+    submittedBy?: {
+      isSystemAccount: boolean;
+      isDeleted: boolean;
+      status: AccountStatus;
+      person: { id: string } | null;
+    } | null;
+  }) {
+    const owner =
+      item.submittedById &&
+      item.submittedBy &&
+      item.submittedBy.person &&
+      !item.submittedBy.isSystemAccount &&
+      !item.submittedBy.isDeleted &&
+      (item.submittedBy.status === AccountStatus.ACTIVE ||
+        item.submittedBy.status === AccountStatus.PENDING_SETUP);
+    if (!owner) {
+      throw reviewConflict(
+        'Select a registered research owner before publishing.',
+        [
+          {
+            code: 'RESEARCH_OWNER_REQUIRED',
+            itemId: item.id,
+            message:
+              'Edit Submitted by and select the person this research belongs to.',
+            tone: 'warning',
+          },
+        ],
+      );
+    }
+  }
+
   async submit(dto: SubmitResearchDto, user: AuthenticatedUser) {
     const canonicalUrl = new URL(dto.canonicalUrl).toString();
     const existing = await this.prisma.researchItem.findUnique({
@@ -565,24 +644,7 @@ export class ResearchService {
           'Staff must select the registered person this record is being submitted for',
         );
       }
-      const submitter = await this.prisma.person.findFirst({
-        where: {
-          id: dto.submitterPersonId,
-          user: {
-            is: {
-              status: {
-                in: [AccountStatus.ACTIVE, AccountStatus.PENDING_SETUP],
-              },
-            },
-          },
-        },
-        select: { id: true, userId: true },
-      });
-      if (!submitter?.userId) {
-        throw new BadRequestException(
-          'The selected submitter does not have an available registered account',
-        );
-      }
+      const submitter = await this.resolveSubmitter(dto.submitterPersonId);
       submittedById = submitter.userId;
       submittedForPersonId = submitter.id;
     } else if (
@@ -593,27 +655,27 @@ export class ResearchService {
         'Members can only submit research for themselves',
       );
     }
+    if (!staff) {
+      if (!user.person) {
+        throw new BadRequestException(
+          'Your account needs a registered person profile before submitting research.',
+        );
+      }
+      submittedById = user.id;
+    }
 
     const slugBase = dto.title
       .toLowerCase()
       .normalize('NFKD')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
-    const verification = await this.settings.verification();
-    const mode =
-      dto.type === ResearchItemType.PAPER
-        ? verification.newPaper
-        : verification.newDataset;
     if (dto.publishNow && user.role !== PlatformRole.ADMIN) {
       throw new BadRequestException('Only administrators can override review');
     }
     if (dto.publishNow && !dto.overrideReason?.trim()) {
       throw new BadRequestException('A publish-now override requires a reason');
     }
-    const publishesDirectly =
-      user.role === PlatformRole.ADMIN ||
-      dto.publishNow === true ||
-      (!staff && mode === 'AUTOMATIC');
+    const publishesDirectly = !staff && dto.publishNow === true;
     const item = await this.prisma.$transaction(async (transaction) => {
       const created = await transaction.researchItem.create({
         data: {
@@ -692,6 +754,12 @@ export class ResearchService {
       });
     }
 
+    this.notifications.publishResearchEvent({
+      kind: 'status',
+      reviewStatus: item.reviewStatus,
+      scope: 'research',
+      researchItemId: item.id,
+    });
     if (!publishesDirectly) {
       await this.notifications.notifyReviewers({
         type: NotificationType.RESEARCH_SUBMITTED,
@@ -713,7 +781,13 @@ export class ResearchService {
   async rediscover(id: string) {
     const item = await this.prisma.researchItem.findUnique({
       where: { id },
-      select: { id: true, canonicalUrl: true, sourceSnapshot: true },
+      select: {
+        id: true,
+        canonicalUrl: true,
+        sourceSnapshot: true,
+        automationVersion: true,
+        automationClaimedAt: true,
+      },
     });
     if (!item) throw new NotFoundException('Research item not found');
     if (!item.canonicalUrl) {
@@ -733,12 +807,37 @@ export class ResearchService {
     }
     if (item.sourceSnapshot?.status === SourceFetchStatus.PENDING) {
       const activeJobId = await this.discovery.activeJobId(item.id);
-      if (activeJobId) {
+      const lastActivity =
+        item.automationClaimedAt ?? item.sourceSnapshot.updatedAt;
+      const stale =
+        lastActivity && lastActivity.getTime() < Date.now() - 5 * 60_000;
+      if (activeJobId && !stale) {
         return {
           deduplicated: true,
           jobId: activeJobId,
           status: SourceFetchStatus.PENDING,
         };
+      }
+      if (stale) {
+        await this.prisma.$transaction(async (transaction) => {
+          const changed = await transaction.researchItem.updateMany({
+            where: { id, automationVersion: item.automationVersion },
+            data: {
+              automationVersion: { increment: 1 },
+              automationOwner: null,
+              automationClaimedAt: null,
+              automationState: ResearchAutomationState.IDLE,
+            },
+          });
+          if (changed.count !== 1)
+            throw new ConflictException(
+              'The source check changed. Refresh before retrying.',
+            );
+          await transaction.job.updateMany({
+            where: { uniqueKey: `research-source:${id}` },
+            data: { uniqueKey: null },
+          });
+        });
       }
     }
     const jobId = await this.discovery.enqueue(
@@ -753,6 +852,82 @@ export class ResearchService {
     };
   }
 
+  async verifySource(
+    id: string,
+    dto: VerifyResearchSourceDto,
+    reviewer: AuthenticatedUser,
+  ) {
+    const note = dto.note.trim();
+    if (note.length < 3)
+      throw new BadRequestException(
+        'Describe the source evidence you verified.',
+      );
+    const item = await this.prisma.researchItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Research item not found');
+    assertResearchRevision(item, dto.expectedAutomationVersion);
+    const canonicalUrl = item.canonicalUrl;
+    if (!canonicalUrl)
+      throw new BadRequestException(
+        'Add a canonical source URL before verifying it.',
+      );
+    await this.prisma.$transaction(async (transaction) => {
+      const changed = await transaction.researchItem.updateMany({
+        where: { id, automationVersion: dto.expectedAutomationVersion },
+        data: {
+          automationVersion: { increment: 1 },
+          automationState: ResearchAutomationState.SUCCEEDED,
+          automationOwner: null,
+          automationClaimedAt: null,
+        },
+      });
+      if (changed.count !== 1)
+        throw new ConflictException(
+          'Research changed. Refresh before verifying the source.',
+        );
+      await transaction.job.updateMany({
+        where: { uniqueKey: `research-source:${id}` },
+        data: { uniqueKey: null },
+      });
+      const evidence = {
+        manuallyVerified: true,
+        note,
+        reviewedById: reviewer.id,
+      };
+      await transaction.researchSourceSnapshot.upsert({
+        where: { researchItemId: id },
+        create: {
+          researchItemId: id,
+          url: canonicalUrl,
+          status: SourceFetchStatus.FETCHED,
+          fetchedAt: new Date(),
+          metadata: evidence,
+        },
+        update: {
+          status: SourceFetchStatus.FETCHED,
+          fetchedAt: new Date(),
+          failureReason: null,
+          metadata: evidence,
+        },
+      });
+      await transaction.auditRecord.create({
+        data: {
+          action: 'research.source-manually-verified',
+          actorId: reviewer.id,
+          entityId: id,
+          entityType: 'ResearchItem',
+          details: { note, canonicalUrl },
+        },
+      });
+    });
+    this.notifications.publishResearchEvent({
+      kind: 'source',
+      scope: 'research',
+      researchItemId: id,
+      sourceStatus: SourceFetchStatus.FETCHED,
+    });
+    return this.reviewItem(id);
+  }
+
   async bulkReview(dto: BulkReviewResearchDto, reviewer: AuthenticatedUser) {
     const ids = [...new Set(dto.ids)];
     if (ids.length !== dto.ids.length) {
@@ -760,6 +935,14 @@ export class ResearchService {
         'Duplicate research review IDs are not allowed',
       );
     }
+    if (dto.expectedAutomationVersions.length !== ids.length) {
+      throw new BadRequestException(
+        'Each research item needs its viewed revision',
+      );
+    }
+    const versions = new Map(
+      ids.map((id, index) => [id, dto.expectedAutomationVersions[index]]),
+    );
     const items = await this.prisma.researchItem.findMany({
       where: { id: { in: ids } },
       include: {
@@ -770,10 +953,21 @@ export class ResearchService {
           },
         },
         sourceSnapshot: { select: { status: true } },
+        submittedBy: {
+          select: {
+            isSystemAccount: true,
+            isDeleted: true,
+            status: true,
+            person: { select: { id: true } },
+          },
+        },
       },
     });
     if (items.length !== ids.length) {
       throw new NotFoundException('One or more research items were not found');
+    }
+    for (const item of items) {
+      assertResearchRevision(item, versions.get(item.id));
     }
     if (
       items.some(
@@ -809,6 +1003,8 @@ export class ResearchService {
       );
     }
     if (dto.status === ReviewStatus.PUBLISHED) {
+      for (const item of items) this.assertPublishableOwner(item);
+      assertResearchAuthors(items);
       const pendingSourceItems = items.filter(
         ({ sourceSnapshot }) =>
           sourceSnapshot?.status === SourceFetchStatus.PENDING,
@@ -856,8 +1052,8 @@ export class ResearchService {
     const reviewedAt = new Date();
     await this.prisma.$transaction(async (transaction) => {
       const rows = items.map(
-        ({ id, reviewStatus }) =>
-          Prisma.sql`(${id}::uuid, ${reviewStatus}::"ReviewStatus")`,
+        ({ automationVersion, id, reviewStatus }) =>
+          Prisma.sql`(${automationVersion}::integer, ${id}::uuid, ${reviewStatus}::"ReviewStatus")`,
       );
       const publishGuards =
         dto.status === ReviewStatus.PUBLISHED
@@ -880,6 +1076,10 @@ export class ResearchService {
         Prisma.sql`
           UPDATE "ResearchItem" AS item
           SET
+            "automationClaimedAt" = NULL,
+            "automationOwner" = NULL,
+            "automationState" = 'IDLE'::"ResearchAutomationState",
+            "automationVersion" = item."automationVersion" + 1,
             "publishedAt" = ${
               dto.status === ReviewStatus.PUBLISHED ? reviewedAt : null
             },
@@ -887,8 +1087,9 @@ export class ResearchService {
             "reviewedById" = ${reviewer.id}::uuid,
             "reviewStatus" = ${dto.status}::"ReviewStatus",
             "updatedAt" = NOW()
-          FROM (VALUES ${Prisma.join(rows)}) AS selected(id, from_status)
+          FROM (VALUES ${Prisma.join(rows)}) AS selected(automation_version, id, from_status)
           WHERE item."id" = selected.id
+            AND item."automationVersion" = selected.automation_version
             AND item."reviewStatus" = selected.from_status
             ${publishGuards}
           RETURNING item."id"
@@ -928,6 +1129,14 @@ export class ResearchService {
       }
     });
 
+    for (const item of items) {
+      this.notifications.publishResearchEvent({
+        kind: 'status',
+        reviewStatus: dto.status,
+        scope: 'research',
+        researchItemId: item.id,
+      });
+    }
     await this.notifications.createMany(
       items.flatMap((item) =>
         item.submittedById
@@ -978,6 +1187,7 @@ export class ResearchService {
       },
     });
     if (!item) throw new NotFoundException('Research item not found');
+    assertResearchRevision(item, dto.expectedAutomationVersion);
     if (
       item.type !== ResearchItemType.PAPER &&
       item.type !== ResearchItemType.DATASET
@@ -1037,6 +1247,10 @@ export class ResearchService {
         },
       ]);
     }
+    if (dto.status === ReviewStatus.PUBLISHED) {
+      this.assertPublishableOwner(item);
+      assertResearchAuthors([item]);
+    }
     if (
       dto.status === ReviewStatus.PUBLISHED &&
       item.contributors.some((contributor) =>
@@ -1066,34 +1280,101 @@ export class ResearchService {
     }
 
     const updated = await this.prisma.$transaction(async (transaction) => {
-      const result = await transaction.researchItem.update({
-        where: { id },
+      const claimed = await transaction.researchItem.updateMany({
+        where: {
+          automationVersion: item.automationVersion,
+          id,
+          reviewStatus: item.reviewStatus,
+        },
         data: {
+          automationClaimedAt: null,
+          automationOwner: null,
+          automationState: ResearchAutomationState.IDLE,
+          automationVersion: { increment: 1 },
           publishedAt:
             dto.status === ReviewStatus.PUBLISHED ? new Date() : null,
           reviewNote: reviewNote ?? null,
           reviewedById: reviewer.id,
           reviewStatus: dto.status,
-          reviews: {
-            create: {
-              fromStatus: item.reviewStatus,
-              note: reviewNote ?? null,
-              reviewerId: reviewer.id,
-              toStatus: dto.status,
-            },
-          },
         },
       });
+      if (claimed.count !== 1) {
+        throw reviewConflict(
+          'This research record changed or no longer passes the review checks.',
+          [
+            {
+              code: 'RESEARCH_REVIEW_CHANGED',
+              itemId: id,
+              message:
+                'This research record changed or no longer passes the review checks.',
+              tone: 'warning',
+            },
+          ],
+        );
+      }
       if (dto.status === ReviewStatus.PUBLISHED) {
+        const source = await transaction.researchSourceSnapshot.findUnique({
+          where: { researchItemId: id },
+          select: { status: true },
+        });
+        const proposedMatch = await transaction.contributorMatch.findFirst({
+          where: {
+            researchItemId: id,
+            status: ContributorMatchStatus.PROPOSED,
+          },
+          select: { id: true },
+        });
+        if (source?.status === SourceFetchStatus.PENDING) {
+          throw reviewConflict(
+            'Canonical source discovery is still in progress.',
+            [
+              {
+                code: 'SOURCE_DISCOVERY_PENDING',
+                itemId: id,
+                message: 'Canonical source discovery is still in progress.',
+                tone: 'pending',
+              },
+            ],
+          );
+        }
+        if (proposedMatch) {
+          throw reviewConflict(
+            'Resolve proposed registered-person contributor matches before publishing.',
+            [
+              {
+                code: 'CONTRIBUTOR_MATCH_PENDING',
+                itemId: id,
+                message:
+                  'A proposed registered-person contributor match still needs review.',
+                tone: 'pending',
+              },
+            ],
+          );
+        }
         await this.profileSync.normalizePublishedOutputs(
           [item.id],
           reviewer.id,
           transaction,
         );
       }
-      return result;
+      await transaction.reviewRecord.create({
+        data: {
+          fromStatus: item.reviewStatus,
+          note: reviewNote ?? null,
+          researchItemId: id,
+          reviewerId: reviewer.id,
+          toStatus: dto.status,
+        },
+      });
+      return transaction.researchItem.findUniqueOrThrow({ where: { id } });
     });
 
+    this.notifications.publishResearchEvent({
+      kind: 'status',
+      reviewStatus: dto.status,
+      scope: 'research',
+      researchItemId: item.id,
+    });
     if (item.submittedById) {
       await this.notifications.create(item.submittedById, {
         type: NotificationType.RESEARCH_REVIEWED,
@@ -1126,14 +1407,19 @@ export class ResearchService {
 
   async updateReviewRecord(
     id: string,
-    dto: SubmitResearchDto,
+    dto: UpdateResearchDto,
     reviewer: AuthenticatedUser,
   ) {
     const item = await this.prisma.researchItem.findUnique({
       where: { id },
-      include: { contributors: true, dataset: true, paper: true },
+      include: {
+        contributors: { orderBy: { sortOrder: 'asc' } },
+        dataset: true,
+        paper: true,
+      },
     });
     if (!item) throw new NotFoundException('Research item not found');
+    assertResearchRevision(item, dto.expectedAutomationVersion);
     if (
       item.type !== ResearchItemType.PAPER &&
       item.type !== ResearchItemType.DATASET
@@ -1146,6 +1432,19 @@ export class ResearchService {
       throw new BadRequestException('Research record type cannot be changed');
     }
     const canonicalUrl = new URL(dto.canonicalUrl).toString();
+    const submitter = await this.resolveSubmitter(dto.submitterPersonId);
+    const contributorsChanged =
+      item.contributors.length !== dto.contributors.length ||
+      item.contributors.some(
+        (contributor, index) =>
+          contributor.displayName !== dto.contributors[index],
+      );
+    const sourceChanged =
+      canonicalUrl !== item.canonicalUrl ||
+      dto.title.trim() !== item.title ||
+      contributorsChanged ||
+      (item.type === ResearchItemType.PAPER &&
+        (dto.doi?.trim() || null) !== item.paper?.doi);
     const duplicate = await this.prisma.researchItem.findFirst({
       where: { canonicalUrl, id: { not: id } },
       select: { id: true },
@@ -1154,34 +1453,72 @@ export class ResearchService {
       throw new ConflictException('This URL is already registered');
 
     await this.prisma.$transaction(async (transaction) => {
-      await transaction.researchItem.update({
-        where: { id },
+      const claimed = await transaction.researchItem.updateMany({
+        where: {
+          automationVersion: item.automationVersion,
+          id,
+        },
         data: {
+          ...(sourceChanged
+            ? {
+                automationClaimedAt: null,
+                automationOwner: null,
+                automationState: ResearchAutomationState.IDLE,
+                publishedAt: null,
+                reviewNote:
+                  'Source identity or authors edited; verification must be repeated.',
+                reviewedById: null,
+                reviewStatus: ReviewStatus.NEEDS_REVIEW,
+              }
+            : {}),
+          automationVersion: { increment: 1 },
           canonicalUrl,
-          contributors: {
-            deleteMany: {},
-            create: dto.contributors.map((displayName, sortOrder) => ({
-              displayName,
-              sortOrder,
-            })),
-          },
-          publishedAt: null,
-          reviewNote:
-            'Record edited by moderator; verification must be repeated.',
-          reviewedById: reviewer.id,
-          reviewStatus: ReviewStatus.NEEDS_REVIEW,
-          reviews: {
-            create: {
-              fromStatus: item.reviewStatus,
-              note: 'Record edited by moderator; verification must be repeated.',
-              reviewerId: reviewer.id,
-              toStatus: ReviewStatus.NEEDS_REVIEW,
-            },
-          },
+          submittedById: submitter.userId,
           summary: dto.summary?.trim() || null,
           title: dto.title.trim(),
         },
       });
+      if (claimed.count !== 1) {
+        throw reviewConflict(
+          'This research record changed while the edit was being saved. Reload and retry.',
+          [
+            {
+              code: 'RESEARCH_REVIEW_CHANGED',
+              itemId: id,
+              message:
+                'This research record changed while the edit was being saved. Reload and retry.',
+              tone: 'warning',
+            },
+          ],
+        );
+      }
+      if (contributorsChanged) {
+        await transaction.researchContributor.deleteMany({
+          where: { researchItemId: id },
+        });
+        await transaction.researchContributor.createMany({
+          data: dto.contributors.map((displayName, sortOrder) => ({
+            displayName,
+            researchItemId: id,
+            sortOrder,
+          })),
+        });
+      }
+      if (sourceChanged) {
+        await transaction.job.updateMany({
+          where: { uniqueKey: `research-source:${id}` },
+          data: { uniqueKey: null },
+        });
+        await transaction.reviewRecord.create({
+          data: {
+            fromStatus: item.reviewStatus,
+            note: 'Record edited by moderator; verification must be repeated.',
+            reviewerId: reviewer.id,
+            researchItemId: id,
+            toStatus: ReviewStatus.NEEDS_REVIEW,
+          },
+        });
+      }
       if (item.type === ResearchItemType.PAPER) {
         await transaction.paper.update({
           where: { researchItemId: id },
@@ -1214,11 +1551,32 @@ export class ResearchService {
           actorId: reviewer.id,
           entityId: id,
           entityType: 'ResearchItem',
+          details: {
+            previousSubmittedById: item.submittedById,
+            submittedById: submitter.userId,
+            sourceRecheck: sourceChanged,
+          },
         },
       });
+      if (!sourceChanged && item.reviewStatus === ReviewStatus.PUBLISHED) {
+        await this.profileSync.normalizePublishedOutputs(
+          [id],
+          reviewer.id,
+          transaction,
+        );
+      }
     });
 
-    await this.discovery.enqueue(id, canonicalUrl, `research-source:${id}`);
+    if (sourceChanged)
+      await this.discovery.enqueue(id, canonicalUrl, `research-source:${id}`);
+    this.notifications.publishResearchEvent({
+      kind: 'status',
+      reviewStatus: sourceChanged
+        ? ReviewStatus.NEEDS_REVIEW
+        : item.reviewStatus,
+      scope: 'research',
+      researchItemId: id,
+    });
     return this.reviewItem(id);
   }
 
@@ -1227,10 +1585,60 @@ export class ResearchService {
   }
 }
 
+function availableResearchOwner(): Prisma.UserWhereInput {
+  return {
+    isDeleted: false,
+    isSystemAccount: false,
+    status: { in: [AccountStatus.ACTIVE, AccountStatus.PENDING_SETUP] },
+  };
+}
+
+function assertResearchAuthors(
+  items: Array<{ id: string; contributors: unknown[] }>,
+): void {
+  const missing = items.filter(({ contributors }) => contributors.length === 0);
+  if (missing.length)
+    throw reviewConflict(
+      'Add the source authors before publishing.',
+      missing.map(({ id }) => ({
+        code: 'RESEARCH_AUTHORS_REQUIRED',
+        itemId: id,
+        message:
+          'This record has no authors. Edit it or complete source discovery.',
+        tone: 'warning' as const,
+      })),
+    );
+}
+
+function assertResearchRevision(
+  item: { id: string; automationVersion: number },
+  expected: number | undefined,
+): void {
+  if (expected === undefined || item.automationVersion !== expected) {
+    throw reviewConflict(
+      'This research record changed. Refresh and reconcile your changes before retrying.',
+      [
+        {
+          code: 'RESEARCH_REVIEW_CHANGED',
+          itemId: item.id,
+          message:
+            'The viewed research revision is out of date. Refresh before reviewing or editing.',
+          tone: 'warning',
+        },
+      ],
+    );
+  }
+}
+
 function researchReviewIssues(item: {
   id: string;
+  submittedById?: string | null;
+  submittedBy?: { isSystemAccount?: boolean; person?: unknown } | null;
   canonicalUrl?: string | null;
-  sourceSnapshot?: { status: SourceFetchStatus } | null;
+  sourceSnapshot?: {
+    status: SourceFetchStatus;
+    metadata?: Prisma.JsonValue;
+  } | null;
   contributors: Array<{
     matches?: Array<{ status: ContributorMatchStatus }>;
   }>;
@@ -1241,6 +1649,28 @@ function researchReviewIssues(item: {
     message: string;
     tone: 'error' | 'pending' | 'warning';
   }> = [];
+  if (
+    !item.submittedById ||
+    !item.submittedBy?.person ||
+    item.submittedBy.isSystemAccount
+  ) {
+    issues.push({
+      code: 'RESEARCH_OWNER_REQUIRED',
+      itemId: item.id,
+      message:
+        'Select the person this research belongs to in Submitted by before publishing.',
+      tone: 'warning',
+    });
+  }
+  if (!item.contributors.length) {
+    issues.push({
+      code: 'RESEARCH_AUTHORS_REQUIRED',
+      itemId: item.id,
+      message:
+        'Authors are missing. Save the record now and add authors or run source discovery before publishing.',
+      tone: 'warning',
+    });
+  }
   if (!item.canonicalUrl) {
     issues.push({
       code: 'CANONICAL_SOURCE_MISSING',
@@ -1270,6 +1700,22 @@ function researchReviewIssues(item: {
       itemId: item.id,
       message:
         'No machine-readable source metadata was found. Manual verification is available.',
+      tone: 'warning',
+    });
+  }
+  const metadata = item.sourceSnapshot?.metadata;
+  if (
+    metadata &&
+    typeof metadata === 'object' &&
+    !Array.isArray(metadata) &&
+    Array.isArray(metadata.authorDiscrepancies) &&
+    metadata.authorDiscrepancies.length
+  ) {
+    issues.push({
+      code: 'SOURCE_AUTHOR_DISCREPANCY',
+      itemId: item.id,
+      message:
+        'Submitted contributors are missing from the canonical source. Correct the record or verify the discrepancy manually before publishing.',
       tone: 'warning',
     });
   }

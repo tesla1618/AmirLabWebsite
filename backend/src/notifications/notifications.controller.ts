@@ -33,7 +33,7 @@ export class NotificationsController {
 
   @Sse('events')
   events(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
-    return this.notifications.stream(user.id);
+    return this.notifications.stream(user.id, user.role !== 'MEMBER');
   }
 
   @Patch(':id/read')

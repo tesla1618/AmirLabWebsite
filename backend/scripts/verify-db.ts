@@ -11,7 +11,10 @@ import {
   ReviewStatus,
 } from '../generated/prisma/client';
 import { createCliPrisma } from './prisma';
-import { readSeedData } from './seed-data';
+import {
+  firstKnownContributorSourceIdForSeed,
+  readSeedData,
+} from './seed-data';
 
 const uploadRoot = resolve(process.env.UPLOAD_ROOT ?? './storage');
 
@@ -51,6 +54,7 @@ async function main() {
       siteSettings,
       departmentMemberships,
       seededSourceSnapshots,
+      seededPaperProvenance,
     ] = await Promise.all([
       prisma.person.count({ where: { legacySourceId: { not: null } } }),
       prisma.user.count({
@@ -98,6 +102,19 @@ async function main() {
       prisma.siteSetting.findMany({ select: { key: true } }),
       prisma.personDepartment.count(),
       prisma.researchSourceSnapshot.count(),
+      prisma.researchItem.findMany({
+        where: {
+          legacySourceId: { not: null },
+          type: ResearchItemType.PAPER,
+        },
+        select: {
+          legacySourceId: true,
+          submittedById: true,
+          submittedBy: {
+            select: { person: { select: { legacySourceId: true } } },
+          },
+        },
+      }),
     ]);
 
     expect(
@@ -164,6 +181,40 @@ async function main() {
       'source checks staged without a discovery job',
       seededSourceSnapshots,
       0,
+    );
+
+    const knownContributorSourceIds = new Set(
+      seed.people.map((person) => person.sourceId),
+    );
+    const paperProvenanceBySourceId = new Map(
+      seededPaperProvenance.flatMap((paper) =>
+        paper.legacySourceId ? [[paper.legacySourceId, paper] as const] : [],
+      ),
+    );
+    for (const paper of seed.papers) {
+      const actual = paperProvenanceBySourceId.get(paper.sourceId);
+      if (!actual) {
+        throw new Error(`Missing seeded paper ${paper.sourceId}`);
+      }
+      const expectedSourceId = firstKnownContributorSourceIdForSeed(
+        paper.contributorSourceIds,
+        knownContributorSourceIds,
+      );
+      const actualSourceId = actual.submittedBy?.person?.legacySourceId ?? null;
+      if (
+        expectedSourceId === null
+          ? actual.submittedById !== null
+          : actualSourceId !== expectedSourceId
+      ) {
+        throw new Error(
+          `Seeded paper ${paper.sourceId} has invalid submitter provenance`,
+        );
+      }
+    }
+    expect(
+      'seed paper submitter provenance',
+      seed.papers.length,
+      seed.papers.length,
     );
 
     const badAvatarKeys = avatars.filter(
