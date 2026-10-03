@@ -234,11 +234,12 @@ export function WorkspaceCollection({
 export function WorkspaceRow({
   children,
   className,
+  inset = true,
   ...props
-}: ComponentPropsWithoutRef<"div">) {
+}: ComponentPropsWithoutRef<"div"> & { inset?: boolean }) {
   return (
     <div className="relative border-b border-line last:border-b-0" {...props}>
-      <div className="min-w-0 px-[var(--workspace-gutter)]">
+      <div className={cn("min-w-0", inset && "px-[var(--workspace-gutter)]")}>
         <div className={cn("min-w-0", className)}>{children}</div>
       </div>
     </div>

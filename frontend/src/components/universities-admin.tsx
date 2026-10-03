@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import Image from "next/image";
-import Link from "next/link";
+import { WorkspaceRowLink } from "@/components/ui/workspace-row-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { ArrowRight, Save, Trash2, Upload } from "lucide-react";
@@ -25,10 +25,7 @@ import { CheckboxControl } from "@/components/ui/checkbox-control";
 import { FileInputControl, InputControl } from "@/components/ui/form-controls";
 import type { University } from "@/lib/types";
 import { ButtonControl } from "@/components/ui/button-control";
-import {
-  WorkspaceCollection,
-  WorkspaceRow,
-} from "@/components/ui/workspace-surface";
+import { WorkspaceCollection } from "@/components/ui/workspace-surface";
 
 const EMPTY_UNIVERSITY: University = {
   createdAt: "",
@@ -103,57 +100,55 @@ export function UniversityIndex() {
             ? Array.from({ length: 4 }, () => undefined)
             : universities
           ).map((university, index) => (
-            <WorkspaceRow key={university?.id ?? `university-loading-${index}`}>
-              <Link
-                aria-disabled={loading || !university}
-                className="flex min-h-[64px] items-center justify-between gap-4 bg-transparent py-[.72rem] text-inherit transition-colors hover:bg-surface-subtle"
-                href={
-                  university ? `/workspace/universities/${university.id}` : "#"
-                }
-                tabIndex={loading ? -1 : undefined}
-              >
-                <div>
-                  <strong
-                    className={cn(
-                      "text-[.84rem] font-medium leading-[1.35]",
-                      loadingPlaceholder(loading, "text", "long"),
-                    )}
-                    data-placeholder="text"
-                    data-placeholder-width="long"
-                  >
-                    {university?.name ||
-                      (loading ? "Loading university" : "Unnamed university")}
-                  </strong>
-                  <div className="mt-[.35rem]">
-                    {university ? (
-                      <SemanticStatus
-                        loading={loading}
-                        tone={university.isPublished ? "success" : "warning"}
-                      >
-                        {university.isPublished ? "Published" : "Draft"}
-                      </SemanticStatus>
-                    ) : (
-                      <small
-                        className={cn(
-                          "font-mono text-[.6rem] text-ink-muted",
-                          loadingPlaceholder(loading, "label", "medium"),
-                        )}
-                        data-placeholder="label"
-                        data-placeholder-width="medium"
-                      >
-                        Loading status
-                      </small>
-                    )}
-                  </div>
+            <WorkspaceRowLink
+              key={university?.id ?? `university-loading-${index}`}
+              loading={loading || !university}
+              className="flex min-h-[64px] items-center justify-between gap-4 py-[.72rem]"
+              href={
+                university ? `/workspace/universities/${university.id}` : "#"
+              }
+            >
+              <div>
+                <strong
+                  className={cn(
+                    "text-[.84rem] font-medium leading-[1.35]",
+                    loadingPlaceholder(loading, "text", "long"),
+                  )}
+                  data-placeholder="text"
+                  data-placeholder-width="long"
+                >
+                  {university?.name ||
+                    (loading ? "Loading university" : "Unnamed university")}
+                </strong>
+                <div className="mt-[.35rem]">
+                  {university ? (
+                    <SemanticStatus
+                      loading={loading}
+                      tone={university.isPublished ? "success" : "warning"}
+                    >
+                      {university.isPublished ? "Published" : "Draft"}
+                    </SemanticStatus>
+                  ) : (
+                    <small
+                      className={cn(
+                        "font-mono text-[.6rem] text-ink-muted",
+                        loadingPlaceholder(loading, "label", "medium"),
+                      )}
+                      data-placeholder="label"
+                      data-placeholder-width="medium"
+                    >
+                      Loading status
+                    </small>
+                  )}
                 </div>
-                <ArrowRight
-                  aria-hidden="true"
-                  className={loading ? "opacity-[.12]" : undefined}
-                  data-loading-icon={loading ? "true" : undefined}
-                  size={17}
-                />
-              </Link>
-            </WorkspaceRow>
+              </div>
+              <ArrowRight
+                aria-hidden="true"
+                className={loading ? "opacity-[.12]" : undefined}
+                data-loading-icon={loading ? "true" : undefined}
+                size={17}
+              />
+            </WorkspaceRowLink>
           ))}
         </WorkspaceCollection>
       )}

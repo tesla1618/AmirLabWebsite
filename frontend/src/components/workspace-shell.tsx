@@ -20,6 +20,8 @@ import {
   MenuSheetDivider,
   MenuSheetLink,
   UnreadDot,
+  accountTriggerClass,
+  menuTriggerClass,
   menuSheetRowClass,
   unreadLabel,
 } from "@/components/menu-sheet";
@@ -265,14 +267,15 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 aria-expanded={menuOpen}
                 aria-haspopup="dialog"
                 aria-label={`Open workspace menu${unreadLabel(unreadCount)}`}
-                className="relative -mr-[calc(var(--workspace-gutter)_-_8px)] hidden h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-transparent p-0 max-[820px]:inline-flex"
+                className={cn(
+                  menuTriggerClass,
+                  "-mr-[calc(var(--workspace-gutter)_-_8px)] hidden max-[820px]:inline-flex",
+                )}
                 onClick={() => setMenuOpen(true)}
                 type="button"
               >
                 <Menu aria-hidden="true" />
-                {unreadCount ? (
-                  <UnreadDot inside />
-                ) : null}
+                {unreadCount ? <UnreadDot /> : null}
               </button>
               <div className="flex items-center gap-[.55rem] max-[820px]:hidden">
                 <Link
@@ -288,7 +291,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   ) : null}
                 </Link>
                 <Link
-                  className="inline-flex"
+                  className={accountTriggerClass}
                   href="/workspace/profile"
                   title={accountName}
                 >

@@ -6,6 +6,13 @@ import { ProfileAvatar } from "@/components/profile-avatar";
 import { cn } from "@/lib/cn";
 import type { AuthenticatedUser } from "@/lib/types";
 
+/** Shared hover and focus treatment for public and workspace header controls. */
+export const menuTriggerClass =
+  "relative h-10 w-10 cursor-pointer items-center justify-center rounded-control border border-line-strong bg-transparent p-0 transition-colors hover:border-brand hover:bg-surface-subtle focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]";
+
+export const accountTriggerClass =
+  "relative inline-flex cursor-pointer rounded-full border-0 bg-transparent p-0 transition-shadow hover:shadow-[0_0_0_1px_var(--brand)] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]";
+
 /** Row style shared by every link and action inside a menu sheet. */
 export const menuSheetRowClass =
   "flex h-11 w-full items-center gap-2.5 rounded-control px-3 text-[.86rem] transition-colors hover:bg-surface-subtle";
@@ -97,14 +104,11 @@ export function MenuSheetDivider() {
 }
 
 /** Visual unread marker on a menu or avatar trigger; pair with unreadLabel. */
-export function UnreadDot({ inside = false }: { inside?: boolean }) {
+export function UnreadDot() {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "absolute size-2.5 rounded-full border-2 border-surface bg-brand",
-        inside ? "top-1 right-1" : "-top-1 -right-1",
-      )}
+      className="absolute top-0 right-0 size-2.5 rounded-full border-2 border-surface bg-brand"
     />
   );
 }

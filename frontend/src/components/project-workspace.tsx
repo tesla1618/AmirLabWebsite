@@ -2,6 +2,7 @@
 
 import { loadingPlaceholder } from "@/lib/loading-style";
 import Link from "next/link";
+import { WorkspaceRowLink } from "@/components/ui/workspace-row-link";
 import {
   useCallback,
   useEffect,
@@ -28,10 +29,7 @@ import { SelectControl } from "@/components/ui/select-control";
 import { apiRequest } from "@/lib/client-api";
 import { StatePanel } from "@/components/state-panel";
 import { cn } from "@/lib/cn";
-import {
-  WorkspaceCollection,
-  WorkspaceRow,
-} from "@/components/ui/workspace-surface";
+import { WorkspaceCollection } from "@/components/ui/workspace-surface";
 
 interface WorkspaceProject {
   researchItemId: string;
@@ -158,99 +156,93 @@ export function ProjectIndex() {
                 )
               : projects
             ).map((project, index) => (
-              <WorkspaceRow
-                className="hover:bg-surface-subtle"
+              <WorkspaceRowLink
                 key={project.researchItemId || `project-loading-${index}`}
+                loading={loading}
+                className="grid grid-cols-[minmax(0,1fr)_190px_auto] items-center gap-6 py-[.95rem] max-[700px]:grid-cols-1 max-[700px]:gap-3"
+                href={
+                  loading
+                    ? "#"
+                    : `/workspace/projects/${project.researchItemId}`
+                }
               >
-                <Link
-                  aria-disabled={loading}
-                  className="grid grid-cols-[minmax(0,1fr)_190px_auto] items-center gap-6 py-[.95rem] max-[700px]:grid-cols-1 max-[700px]:gap-3"
-                  data-loading={loading || undefined}
-                  href={
-                    loading
-                      ? "#"
-                      : `/workspace/projects/${project.researchItemId}`
-                  }
-                  tabIndex={loading ? -1 : undefined}
-                >
-                  <div>
-                    <span
-                      className={cn(
-                        "font-mono text-[.61rem] text-ink-muted uppercase",
-                        loadingPlaceholder(loading, "label", "medium"),
-                      )}
-                      data-placeholder={loading ? "label" : undefined}
-                      data-placeholder-width="medium"
-                    >
-                      {project.researchItem.reviewStatus === "ARCHIVED"
-                        ? "ARCHIVED"
-                        : (project.status?.replaceAll("_", " ") ?? "Project")}
-                    </span>
-                    <h2
-                      className={cn(
-                        "my-[.22rem] font-sans text-[1.03rem] font-medium leading-[1.3]",
-                        loadingPlaceholder(loading, "text", "long"),
-                      )}
-                      data-placeholder={loading ? "text" : undefined}
-                      data-placeholder-width="long"
-                    >
-                      {project.researchItem.title ?? "Loading project"}
-                    </h2>
-                    <p
-                      className={cn(
-                        "m-0 max-w-[680px] text-[.72rem] leading-[1.45] text-ink-muted",
-                        loadingPlaceholder(loading, "text", "full"),
-                      )}
-                      data-placeholder={loading ? "text" : undefined}
-                      data-placeholder-width="full"
-                    >
-                      {project.researchItem.summary ??
-                        project.objective ??
-                        "Loading project summary"}
-                    </p>
-                  </div>
-                  <div className="grid gap-[.45rem]">
-                    <strong
-                      className={cn(
-                        "font-mono text-[1.18rem] font-medium",
-                        loadingPlaceholder(loading, "value"),
-                      )}
-                      data-placeholder={loading ? "value" : undefined}
-                    >
-                      {project.progress}%
-                    </strong>
-                    <svg
-                      aria-hidden="true"
-                      className="h-[3px] w-full"
-                      preserveAspectRatio="none"
-                      viewBox="0 0 100 3"
-                    >
-                      <rect className="fill-line" height="3" width="100" />
-                      <rect
-                        className="fill-brand"
-                        height="3"
-                        width={loading ? 40 : project.progress}
-                      />
-                    </svg>
-                    <small
-                      className={cn(
-                        "font-mono text-[.61rem] text-ink-muted uppercase",
-                        loadingPlaceholder(loading, "label", "long"),
-                      )}
-                      data-placeholder={loading ? "label" : undefined}
-                      data-placeholder-width="long"
-                    >
-                      {project.milestones.length} milestones ·{" "}
-                      {project.memberships.length} members
-                    </small>
-                  </div>
-                  <ArrowUpRight
-                    className={loading ? "opacity-[.12]" : undefined}
-                    data-loading-icon={loading ? "true" : undefined}
-                    size={19}
-                  />
-                </Link>
-              </WorkspaceRow>
+                <div>
+                  <span
+                    className={cn(
+                      "font-mono text-[.61rem] text-ink-muted uppercase",
+                      loadingPlaceholder(loading, "label", "medium"),
+                    )}
+                    data-placeholder={loading ? "label" : undefined}
+                    data-placeholder-width="medium"
+                  >
+                    {project.researchItem.reviewStatus === "ARCHIVED"
+                      ? "ARCHIVED"
+                      : (project.status?.replaceAll("_", " ") ?? "Project")}
+                  </span>
+                  <h2
+                    className={cn(
+                      "my-[.22rem] font-sans text-[1.03rem] font-medium leading-[1.3]",
+                      loadingPlaceholder(loading, "text", "long"),
+                    )}
+                    data-placeholder={loading ? "text" : undefined}
+                    data-placeholder-width="long"
+                  >
+                    {project.researchItem.title ?? "Loading project"}
+                  </h2>
+                  <p
+                    className={cn(
+                      "m-0 max-w-[680px] text-[.72rem] leading-[1.45] text-ink-muted",
+                      loadingPlaceholder(loading, "text", "full"),
+                    )}
+                    data-placeholder={loading ? "text" : undefined}
+                    data-placeholder-width="full"
+                  >
+                    {project.researchItem.summary ??
+                      project.objective ??
+                      "Loading project summary"}
+                  </p>
+                </div>
+                <div className="grid gap-[.45rem]">
+                  <strong
+                    className={cn(
+                      "font-mono text-[1.18rem] font-medium",
+                      loadingPlaceholder(loading, "value"),
+                    )}
+                    data-placeholder={loading ? "value" : undefined}
+                  >
+                    {project.progress}%
+                  </strong>
+                  <svg
+                    aria-hidden="true"
+                    className="h-[3px] w-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 3"
+                  >
+                    <rect className="fill-line" height="3" width="100" />
+                    <rect
+                      className="fill-brand"
+                      height="3"
+                      width={loading ? 40 : project.progress}
+                    />
+                  </svg>
+                  <small
+                    className={cn(
+                      "font-mono text-[.61rem] text-ink-muted uppercase",
+                      loadingPlaceholder(loading, "label", "long"),
+                    )}
+                    data-placeholder={loading ? "label" : undefined}
+                    data-placeholder-width="long"
+                  >
+                    {project.milestones.length} milestones ·{" "}
+                    {project.memberships.length} members
+                  </small>
+                </div>
+                <ArrowUpRight
+                  className={loading ? "opacity-[.12]" : undefined}
+                  data-loading-icon={loading ? "true" : undefined}
+                  size={19}
+                />
+              </WorkspaceRowLink>
             ))
           : null}
         {!loading && !projects.length && !error ? (

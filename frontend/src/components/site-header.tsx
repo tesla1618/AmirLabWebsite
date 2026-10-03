@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Menu } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { BrandLockup } from "@/components/brand-mark";
 import { useNotifications } from "@/components/notification-provider";
 import { ProfileAvatar } from "@/components/profile-avatar";
-import { ButtonLink } from "@/components/ui/button-control";
+import { ButtonControl, ButtonLink } from "@/components/ui/button-control";
 import { CountPill } from "@/components/ui/count-pill";
 import {
   AccountIdentity,
+  accountTriggerClass,
+  menuTriggerClass,
   MenuSheet,
   MenuSheetDivider,
   MenuSheetLink,
@@ -42,7 +44,7 @@ const NAVIGATION = [
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { loading, user } = useAuth();
+  const { loading, logout, user } = useAuth();
   const { loading: notificationsLoading, unreadCount } = useNotifications();
   // Only signed-in members have notifications; hide the count until known.
   const unread = user && !notificationsLoading ? unreadCount : 0;
@@ -98,7 +100,7 @@ export function SiteHeader() {
                 <ProfileAvatar loading name="Account" shape="round" />
               </span>
             ) : user ? (
-              <AccountMenu unread={unread} user={user} />
+              <AccountMenu onLogout={logout} unread={unread} user={user} />
             ) : (
               <Link
                 className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-control border border-line-strong bg-transparent px-[.78rem] py-2 text-[.78rem] font-semibold hover:bg-brand-faint"
@@ -113,16 +115,17 @@ export function SiteHeader() {
             aria-expanded={open}
             aria-haspopup="dialog"
             aria-label={`Open menu${unreadLabel(unread)}`}
-            className="relative hidden h-10 w-10 items-center justify-center rounded-control border border-line-strong bg-transparent p-0 max-[1050px]:inline-flex"
+            className={cn(menuTriggerClass, "hidden max-[1050px]:inline-flex")}
             onClick={() => setOpen(true)}
             type="button"
           >
             <Menu aria-hidden="true" />
-            {unread ? <UnreadDot inside /> : null}
+            {unread ? <UnreadDot /> : null}
           </button>
         </div>
       </div>
       <SiteMenuSheet
+        onLogout={logout}
         onClose={() => setOpen(false)}
         open={open}
         pathname={pathname}
@@ -135,6 +138,7 @@ export function SiteHeader() {
 
 /** Small-screen site menu: account, every destination, and sign-in. */
 function SiteMenuSheet({
+  onLogout,
   onClose,
   open,
   pathname,
@@ -142,6 +146,7 @@ function SiteMenuSheet({
   user,
 }: {
   onClose: () => void;
+  onLogout: () => Promise<void>;
   open: boolean;
   pathname: string;
   unread: number;
@@ -186,15 +191,30 @@ function SiteMenuSheet({
       >
         {user ? "Open workspace" : "Log in"}
       </ButtonLink>
+      {user ? (
+        <ButtonControl
+          className="w-full justify-center"
+          onClick={() => {
+            onClose();
+            void onLogout();
+          }}
+          variant="danger-ghost"
+        >
+          <LogOut aria-hidden="true" size={16} />
+          Log out
+        </ButtonControl>
+      ) : null}
     </MenuSheet>
   );
 }
 
-/** Desktop account menu: identity, notifications, and the workspace. */
+/** Desktop account menu: identity, notifications, workspace access, and logout. */
 function AccountMenu({
+  onLogout,
   unread,
   user,
 }: {
+  onLogout: () => Promise<void>;
   unread: number;
   user: AuthenticatedUser;
 }) {
@@ -203,7 +223,7 @@ function AccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           aria-label={`Account menu${unreadLabel(unread)}`}
-          className="relative inline-flex cursor-pointer rounded-full border-0 bg-transparent p-0 focus-visible:shadow-[var(--focus-ring)]"
+          className={accountTriggerClass}
           type="button"
         >
           <ProfileAvatar
@@ -234,6 +254,11 @@ function AccountMenu({
             <Link href="/workspace" prefetch={false}>
               Open workspace
             </Link>
+          </RowActionMenuItem>
+          <DropdownMenu.Separator className="my-1 h-px bg-line" />
+          <RowActionMenuItem danger onSelect={() => void onLogout()}>
+            <LogOut aria-hidden="true" size={15} />
+            Log out
           </RowActionMenuItem>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

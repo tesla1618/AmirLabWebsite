@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
-import Link from "next/link";
+import { WorkspaceRowLink } from "@/components/ui/workspace-row-link";
 import { useRouter } from "next/navigation";
 import { SyntheticEvent, useEffect, useState } from "react";
 import { ArrowRight, Save, Trash2 } from "lucide-react";
@@ -30,10 +30,7 @@ import {
   SemanticStatus,
 } from "@/components/ui/semantic-status";
 import { useReviewIssues } from "@/lib/use-review-issues";
-import {
-  WorkspaceCollection,
-  WorkspaceRow,
-} from "@/components/ui/workspace-surface";
+import { WorkspaceCollection } from "@/components/ui/workspace-surface";
 
 const EMPTY_DEPARTMENT: Department = {
   abbreviation: null,
@@ -109,57 +106,55 @@ export function DepartmentIndex() {
             ? Array.from({ length: 5 }, () => undefined)
             : departments
           ).map((department, index) => (
-            <WorkspaceRow key={department?.id ?? `department-loading-${index}`}>
-              <Link
-                aria-disabled={loading || !department}
-                className="flex min-h-[64px] items-center justify-between gap-4 bg-transparent py-[.72rem] text-inherit transition-colors hover:bg-surface-subtle"
-                href={
-                  department ? `/workspace/departments/${department.id}` : "#"
-                }
-                tabIndex={loading ? -1 : undefined}
-              >
-                <div>
-                  <strong
+            <WorkspaceRowLink
+              key={department?.id ?? `department-loading-${index}`}
+              loading={loading || !department}
+              className="flex min-h-[64px] items-center justify-between gap-4 py-[.72rem]"
+              href={
+                department ? `/workspace/departments/${department.id}` : "#"
+              }
+            >
+              <div>
+                <strong
+                  className={cn(
+                    "text-[.84rem] font-medium leading-[1.35]",
+                    loadingPlaceholder(loading, "text", "long"),
+                  )}
+                  data-placeholder="text"
+                  data-placeholder-width="long"
+                >
+                  {department?.name ?? "Loading department"}
+                </strong>
+                <div className="mt-[.35rem] flex flex-wrap items-center gap-2">
+                  <small
                     className={cn(
-                      "text-[.84rem] font-medium leading-[1.35]",
-                      loadingPlaceholder(loading, "text", "long"),
+                      "font-mono text-[.6rem] text-ink-muted",
+                      loadingPlaceholder(loading, "label", "medium"),
                     )}
-                    data-placeholder="text"
-                    data-placeholder-width="long"
+                    data-placeholder="label"
+                    data-placeholder-width="medium"
                   >
-                    {department?.name ?? "Loading department"}
-                  </strong>
-                  <div className="mt-[.35rem] flex flex-wrap items-center gap-2">
-                    <small
-                      className={cn(
-                        "font-mono text-[.6rem] text-ink-muted",
-                        loadingPlaceholder(loading, "label", "medium"),
-                      )}
-                      data-placeholder="label"
-                      data-placeholder-width="medium"
+                    {department
+                      ? `${department.people.length} member${department.people.length === 1 ? "" : "s"}`
+                      : "Loading members"}
+                  </small>
+                  {department ? (
+                    <SemanticStatus
+                      loading={loading}
+                      tone={department.isPublished ? "success" : "warning"}
                     >
-                      {department
-                        ? `${department.people.length} member${department.people.length === 1 ? "" : "s"}`
-                        : "Loading members"}
-                    </small>
-                    {department ? (
-                      <SemanticStatus
-                        loading={loading}
-                        tone={department.isPublished ? "success" : "warning"}
-                      >
-                        {department.isPublished ? "Published" : "Draft"}
-                      </SemanticStatus>
-                    ) : null}
-                  </div>
+                      {department.isPublished ? "Published" : "Draft"}
+                    </SemanticStatus>
+                  ) : null}
                 </div>
-                <ArrowRight
-                  aria-hidden="true"
-                  className={loading ? "opacity-[.12]" : undefined}
-                  data-loading-icon={loading ? "true" : undefined}
-                  size={17}
-                />
-              </Link>
-            </WorkspaceRow>
+              </div>
+              <ArrowRight
+                aria-hidden="true"
+                className={loading ? "opacity-[.12]" : undefined}
+                data-loading-icon={loading ? "true" : undefined}
+                size={17}
+              />
+            </WorkspaceRowLink>
           ))}
         </WorkspaceCollection>
       )}
