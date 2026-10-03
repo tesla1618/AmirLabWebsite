@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
+import { setSessionEnded } from "@/lib/session-notice";
 import type { AuthenticatedUser } from "@/lib/types";
 
 interface AuthState {
@@ -33,6 +34,11 @@ function rememberCsrfToken(session: AuthSession): void {
   sessionStorage.setItem("amirl_csrf", session.csrfToken);
 }
 
+function clearEndedSession(): void {
+  if (sessionStorage.getItem("amirl_csrf")) setSessionEnded(true);
+  sessionStorage.removeItem("amirl_csrf");
+}
+
 function isUnauthorized(error: unknown): boolean {
   return (
     (error instanceof ApiRequestError && error.status === 401) ||
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return session.user;
     } catch (caught) {
       if (isUnauthorized(caught)) {
-        sessionStorage.removeItem("amirl_csrf");
+        clearEndedSession();
         setUser(null);
         return null;
       }
@@ -67,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiRequest<{ signedOut: true }>("/auth/logout", { method: "POST" });
     } finally {
+      setSessionEnded(false);
       sessionStorage.removeItem("amirl_csrf");
       setUser(null);
       window.location.assign("/login");
@@ -90,7 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch((caught) => {
           if (!active) return;
           const unauthorized = isUnauthorized(caught);
-          if (unauthorized) sessionStorage.removeItem("amirl_csrf");
+          if (unauthorized) {
+            clearEndedSession();
+          }
           setUser(null);
           setLoading(false);
           if (unauthorized) return;
@@ -105,6 +114,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (retry) window.clearTimeout(retry);
     };
   }, []);
+
+  useEffect(() => {
+    const invalidate = () => {
+      clearEndedSession();
+      setUser(null);
+    };
+    let checking = false;
+    const reconcile = () => {
+      if (!user || checking || document.visibilityState !== "visible") return;
+      checking = true;
+      void refreshUser().finally(() => {
+        checking = false;
+      });
+    };
+    window.addEventListener("amirl:session-invalid", invalidate);
+    window.addEventListener("focus", reconcile);
+    document.addEventListener("visibilitychange", reconcile);
+    return () => {
+      window.removeEventListener("amirl:session-invalid", invalidate);
+      window.removeEventListener("focus", reconcile);
+      document.removeEventListener("visibilitychange", reconcile);
+    };
+  }, [refreshUser, user]);
 
   return (
     <AuthContext.Provider value={{ loading, logout, refreshUser, user }}>

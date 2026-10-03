@@ -21,6 +21,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "admin:create": "tsx scripts/create-admin.ts",
+    "push:configure": "node scripts/configure-push.mjs",
     "db:start": "node scripts/local-postgres.mjs start",
     "db:stop": "node scripts/local-postgres.mjs stop",
     "db:status": "node scripts/local-postgres.mjs status",

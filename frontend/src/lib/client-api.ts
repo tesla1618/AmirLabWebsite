@@ -43,6 +43,13 @@ export async function apiRequest<T>(
       payload && !Array.isArray(payload) && typeof payload === "object"
         ? (payload as Record<string, unknown>)
         : undefined;
+    if (
+      response.status === 401 &&
+      record?.code === "SESSION_INVALID" &&
+      path !== "/auth/me"
+    ) {
+      window.dispatchEvent(new Event("amirl:session-invalid"));
+    }
     const message =
       typeof record?.message === "string"
         ? record.message

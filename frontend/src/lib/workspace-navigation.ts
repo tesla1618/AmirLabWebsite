@@ -56,6 +56,11 @@ const MEMBER_WORK: readonly WorkspaceNavigationItem[] = [
     label: "Notifications",
   },
   { href: "/workspace/profile", icon: UserRound, label: "My profile" },
+  {
+    href: "/workspace/settings/account",
+    icon: Settings,
+    label: "Account & devices",
+  },
 ];
 
 const STAFF_WORK: readonly WorkspaceNavigationItem[] = [
@@ -67,6 +72,11 @@ const STAFF_WORK: readonly WorkspaceNavigationItem[] = [
     label: "Notifications",
   },
   { href: "/workspace/profile", icon: UserRound, label: "Profile" },
+  {
+    href: "/workspace/settings/account",
+    icon: Settings,
+    label: "Account & devices",
+  },
 ];
 
 const RESEARCH: readonly WorkspaceNavigationItem[] = [
@@ -120,6 +130,11 @@ const ORGANIZATION: readonly WorkspaceNavigationItem[] = [
 ];
 
 const GOVERNANCE: readonly WorkspaceNavigationItem[] = [
+  {
+    href: "/workspace/settings/backups",
+    icon: Settings,
+    label: "Backup & restore",
+  },
   { href: "/workspace/universities", icon: University, label: "Universities" },
   {
     href: "/workspace/settings/verification",

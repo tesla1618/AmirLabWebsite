@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { SyntheticEvent, useState } from "react";
+import { SyntheticEvent, useState, useSyncExternalStore } from "react";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/lib/auth";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
+import {
+  hasSessionEnded,
+  setSessionEnded,
+  subscribeSessionNotice,
+} from "@/lib/session-notice";
 import { ButtonControl } from "@/components/ui/button-control";
 import { InputControl } from "@/components/ui/form-controls";
 import { FormField, FormMessage } from "@/components/ui/form-field";
@@ -12,6 +17,11 @@ import { PasswordField } from "@/components/ui/password-field";
 type LoginPhase = "idle" | "submitting" | "redirecting";
 
 export function LoginForm() {
+  const sessionEnded = useSyncExternalStore(
+    subscribeSessionNotice,
+    hasSessionEnded,
+    () => false,
+  );
   const [error, setError] = useState<string>();
   const [phase, setPhase] = useState<LoginPhase>("idle");
   const busy = phase !== "idle";
@@ -33,6 +43,7 @@ export function LoginForm() {
         headers: { "content-type": "application/json" },
         method: "POST",
       });
+      setSessionEnded(false);
       sessionStorage.setItem("amirl_csrf", result.csrfToken);
       setPhase("redirecting");
       window.location.assign("/workspace");
@@ -55,6 +66,11 @@ export function LoginForm() {
       className="mt-8 grid gap-4"
       onSubmit={submit}
     >
+      {sessionEnded ? (
+        <FormMessage tone="info">
+          Your session ended. Please log in again.
+        </FormMessage>
+      ) : null}
       <FormField
         className="gap-[.38rem]"
         htmlFor="login-email"

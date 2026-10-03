@@ -1,4 +1,5 @@
 "use client";
+import { enableBrowserPush } from "@/lib/browser-push";
 
 import { loadingPlaceholder } from "@/lib/loading-style";
 import {
@@ -38,7 +39,7 @@ const SOCKET_URL = API_URL.replace(/\/api\/?$/, "");
 type Presence = "ONLINE" | "OFFLINE";
 
 export function WorkspaceChat() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -181,6 +182,7 @@ export function WorkspaceChat() {
     socket.on("connect_error", () =>
       setError("Live chat is unavailable; messages can still be refreshed."),
     );
+    socket.on("session.revoked", () => void refreshUser());
     socketRef.current = socket;
     const heartbeat = window.setInterval(
       () => socket.emit("presence.heartbeat"),
@@ -191,7 +193,7 @@ export function WorkspaceChat() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [selectedId, user]);
+  }, [selectedId, user, refreshUser]);
 
   async function createLabConversation() {
     const conversation = await apiRequest<CollaborationConversation>(
@@ -919,36 +921,10 @@ function formatDateLabel(value: string) {
 async function enablePush(
   setState: (state: "idle" | "enabled" | "unavailable") => void,
 ) {
-  if (
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window) ||
-    !("Notification" in window)
-  ) {
+  try {
+    await enableBrowserPush();
+    setState("enabled");
+  } catch {
     setState("unavailable");
-    return;
   }
-  const { publicKey } = await apiRequest<{ publicKey: string | null }>(
-    "/collaboration/push/public-key",
-    { method: "GET" },
-  );
-  if (!publicKey || (await Notification.requestPermission()) !== "granted")
-    return setState("unavailable");
-  const registration =
-    await navigator.serviceWorker.register("/push-worker.js");
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: decodeKey(publicKey).buffer as ArrayBuffer,
-  });
-  await apiRequest("/collaboration/push/subscription", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(subscription),
-  });
-  setState("enabled");
-}
-
-function decodeKey(value: string): Uint8Array {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const binary = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }

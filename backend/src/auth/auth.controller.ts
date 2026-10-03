@@ -1,11 +1,23 @@
-import { Body, Controller, Get, Patch, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { Environment } from '../config/environment';
+import { SessionManagementService } from './session-management.service';
 import { AuthService } from './auth.service';
 import { EmailChangeService } from './email-change.service';
-import { CurrentUser, Public } from './auth.decorators';
+import { CurrentUser, CurrentSession, Public } from './auth.decorators';
 import type { AuthenticatedUser } from './auth.types';
 import {
   LoginDto,
@@ -22,6 +34,7 @@ import {
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
+    private readonly sessions: SessionManagementService,
     private readonly emailChanges: EmailChangeService,
     private readonly config: ConfigService<Environment, true>,
   ) {}
@@ -129,6 +142,30 @@ export class AuthController {
     return result;
   }
 
+  @Get('sessions')
+  sessionsList(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSession() sessionId: string,
+  ) {
+    return this.sessions.list(user.id, sessionId);
+  }
+
+  @Post('sessions/logout-others')
+  logoutOthers(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSession() sessionId: string,
+  ) {
+    return this.sessions.revokeOthers(user.id, sessionId);
+  }
+
+  @Delete('sessions/:id')
+  revokeSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.sessions.revoke(user.id, id);
+  }
+
   @Get('me')
   me(
     @CurrentUser() user: AuthenticatedUser,
@@ -149,7 +186,14 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ signedOut: true }> {
     const cookieName = this.config.get('sessionCookieName', { infer: true });
-    await this.auth.revoke(request.cookies?.[cookieName] as string | undefined);
+    const sessionId = (request as Request & { currentSessionId?: string })
+      .currentSessionId;
+    const user = (request as Request & { user?: AuthenticatedUser }).user;
+    if (sessionId && user) await this.sessions.revoke(user.id, sessionId);
+    else
+      await this.auth.revoke(
+        request.cookies?.[cookieName] as string | undefined,
+      );
     response.clearCookie(cookieName);
     return { signedOut: true };
   }

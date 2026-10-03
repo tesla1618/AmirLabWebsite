@@ -67,7 +67,7 @@ function fetchWorkspaceCounts() {
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { loading: authLoading, user } = useAuth();
+  const { loading: authLoading, user, refreshUser } = useAuth();
   const [researchRefreshVersion, setResearchRefreshVersion] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [queueCounts, setQueueCounts] = useState(EMPTY_QUEUE_COUNTS);
@@ -182,6 +182,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const events = new EventSource(`${API_URL}/notifications/events`, {
       withCredentials: true,
     });
+    let revalidating = false;
+    let lastRevalidated = 0;
+    events.onerror = () => {
+      if (!active || revalidating || Date.now() - lastRevalidated < 10_000)
+        return;
+      revalidating = true;
+      lastRevalidated = Date.now();
+      void refreshUser().finally(() => {
+        revalidating = false;
+      });
+    };
     const researchEventListener = (event: Event) => {
       if (!("data" in event) || typeof event.data !== "string") return;
       let researchEvent: ResearchLiveEvent | null;
@@ -231,11 +242,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       active = false;
       events.removeEventListener("research", researchEventListener);
       events.onopen = null;
+      events.onerror = null;
       events.close();
       window.removeEventListener("focus", reconcile);
       document.removeEventListener("visibilitychange", reconcile);
     };
-  }, [authLoading, refreshUnreadCount, user]);
+  }, [authLoading, refreshUnreadCount, refreshUser, user]);
 
   return (
     <NotificationContext.Provider

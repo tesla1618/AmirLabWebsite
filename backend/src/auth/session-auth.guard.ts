@@ -36,11 +36,16 @@ export class SessionAuthGuard implements CanActivate {
 
     const request = context
       .switchToHttp()
-      .getRequest<Request & { user?: AuthenticatedUser }>();
+      .getRequest<
+        Request & { user?: AuthenticatedUser; currentSessionId?: string }
+      >();
     const cookieName = this.config.get('sessionCookieName', { infer: true });
     const rawToken = request.cookies?.[cookieName] as string | undefined;
     if (!rawToken) {
-      throw new UnauthorizedException('Authentication required');
+      throw new UnauthorizedException({
+        code: 'SESSION_INVALID',
+        message: 'Authentication required',
+      });
     }
 
     const session = await this.prisma.session.findUnique({
@@ -71,7 +76,10 @@ export class SessionAuthGuard implements CanActivate {
       session.user.isDeleted ||
       session.user.status !== AccountStatus.ACTIVE
     ) {
-      throw new UnauthorizedException('Session is invalid or expired');
+      throw new UnauthorizedException({
+        code: 'SESSION_INVALID',
+        message: 'Session is invalid or expired',
+      });
     }
 
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
@@ -95,6 +103,18 @@ export class SessionAuthGuard implements CanActivate {
       }
     }
 
+    request.currentSessionId = session.id;
+    const now = new Date();
+    if (session.lastSeenAt < new Date(now.getTime() - 5 * 60_000)) {
+      await this.prisma.session.updateMany({
+        where: {
+          id: session.id,
+          revokedAt: null,
+          lastSeenAt: { lt: new Date(now.getTime() - 5 * 60_000) },
+        },
+        data: { lastSeenAt: now },
+      });
+    }
     const person = session.user.person;
     request.user = {
       ...session.user,

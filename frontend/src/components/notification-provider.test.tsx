@@ -28,6 +28,7 @@ class TestEventSource {
   static latest: TestEventSource | undefined;
   private readonly listeners = new Set<EventListener>();
   onopen: (() => void) | null = null;
+  onerror: (() => void) | null = null;
   onmessage: ((event: MessageEvent<string>) => void) | null = null;
 
   constructor(
@@ -115,6 +116,22 @@ describe("NotificationProvider research events", () => {
     cleanup();
     vi.unstubAllGlobals();
     request.mockReset();
+  });
+
+  it("revalidates auth once when repeated SSE errors arrive", async () => {
+    render(
+      <NotificationProvider>
+        <EventProbe />
+      </NotificationProvider>,
+    );
+    await act(async () => Promise.resolve());
+    const refresh = auth().refreshUser;
+    await act(async () => {
+      TestEventSource.latest?.onerror?.();
+      TestEventSource.latest?.onerror?.();
+      await Promise.resolve();
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("reconciles on SSE reconnect and visible tab focus, with cleanup", async () => {

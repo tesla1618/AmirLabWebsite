@@ -8,15 +8,19 @@ import {
   Query,
   Sse,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { CurrentUser } from '../auth/auth.decorators';
+import { Observable, concatMap, takeUntil, takeWhile } from 'rxjs';
+import { SessionManagementService } from '../auth/session-management.service';
+import { CurrentUser, CurrentSession } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationQueryDto } from './dto/notification-query.dto';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly sessions: SessionManagementService,
+  ) {}
 
   @Get()
   list(
@@ -32,8 +36,17 @@ export class NotificationsController {
   }
 
   @Sse('events')
-  events(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
-    return this.notifications.stream(user.id, user.role !== 'MEMBER');
+  events(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSession() sessionId: string,
+  ): Observable<MessageEvent> {
+    return this.notifications.stream(user.id, user.role !== 'MEMBER').pipe(
+      concatMap(async (event) =>
+        (await this.sessions.isActive(user.id, sessionId)) ? event : null,
+      ),
+      takeWhile((event): event is NonNullable<typeof event> => event !== null),
+      takeUntil(this.sessions.invalidations(user.id, sessionId)),
+    );
   }
 
   @Patch(':id/read')

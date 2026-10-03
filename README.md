@@ -67,6 +67,25 @@ using object storage. Do not put credentials in `fly.toml`, an env file
 committed to the repository, or a Docker build argument. The API volume is
 required because seeded and uploaded documents are stored under `UPLOAD_ROOT`.
 
+## Browser push notifications
+
+Generate the VAPID configuration in the gitignored `backend/.env`:
+
+```bash
+pnpm --dir backend run push:configure
+```
+
+The command reuses existing keys and does not print them. Keep
+`VAPID_PRIVATE_KEY` backend-only. Configure `VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in the hosted API's secret store as
+well, then restart the API. Reuse the same keys across restarts and deployments
+so existing browser subscriptions remain valid.
+
+In **Workspace → Settings → Account & devices → Browser notifications**, select
+**Enable notifications**, allow browser permission, and select **Send test**.
+Enable separately on each device. Hosted push requires HTTPS; on iPhone or iPad,
+add AmirLab to the Home Screen and open the installed app first.
+
 ## Workspace
 
 - `frontend` — Next.js public site and private workspace

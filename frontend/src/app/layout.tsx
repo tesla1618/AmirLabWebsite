@@ -1,3 +1,4 @@
+import { PwaProvider } from "@/components/pwa-provider";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/components/auth-provider";
 import { FormValidation } from "@/components/form-validation";
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ type: "image/webp", url: "/amirlab-logo.webp" }],
     shortcut: "/amirlab-logo.webp",
+    apple: "/apple-touch-icon.png",
   },
   title: {
     default: "AmirLab",
@@ -34,12 +36,14 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <AuthProvider>
-          <NotificationProvider>
-            <FormValidation />
-            <SiteLayout>{children}</SiteLayout>
-          </NotificationProvider>
-        </AuthProvider>
+        <PwaProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <FormValidation />
+              <SiteLayout>{children}</SiteLayout>
+            </NotificationProvider>
+          </AuthProvider>
+        </PwaProvider>
       </body>
     </html>
   );

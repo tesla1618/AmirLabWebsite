@@ -12,6 +12,7 @@ import {
   WeeklyReportStatus,
 } from '../../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { PushService } from '../collaboration/push.service';
 import { PrismaService } from '../database/prisma.service';
 import {
   NotificationQueryDto,
@@ -55,7 +56,10 @@ export class NotificationsService {
   private readonly subscribers = new Map<string, Set<NotificationSubscriber>>();
   private readonly researchSubscribers = new Set<NotificationSubscriber>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push: PushService,
+  ) {}
 
   async list(recipientId: string, query: NotificationQueryDto) {
     const createdAt: Prisma.DateTimeFilter = {};
@@ -230,7 +234,16 @@ export class NotificationsService {
       createdAt,
       id: randomUUID(),
     }));
-    await this.prisma.notification.createMany({ data: rows });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.notification.createMany({ data: rows });
+      for (const notification of rows) {
+        await this.push.enqueueNotification(
+          tx,
+          notification.id,
+          notification.recipientId,
+        );
+      }
+    });
     for (const notification of rows) {
       const event: NotificationEvent = {
         actionUrl: notification.actionUrl,
@@ -255,18 +268,23 @@ export class NotificationsService {
       body: string;
       actionUrl?: string;
       payload?: Prisma.InputJsonValue;
+      uniqueKey?: string;
     },
   ): Promise<void> {
-    const notification = await this.prisma.notification.create({
-      data: { recipientId, ...input },
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        body: true,
-        actionUrl: true,
-        createdAt: true,
-      },
+    const notification = await this.prisma.$transaction(async (tx) => {
+      const notification = await tx.notification.create({
+        data: { recipientId, ...input },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          actionUrl: true,
+          createdAt: true,
+        },
+      });
+      await this.push.enqueueNotification(tx, notification.id, recipientId);
+      return notification;
     });
     for (const subscriber of this.subscribers.get(recipientId) ?? []) {
       subscriber.next({ data: notification });
@@ -285,20 +303,7 @@ export class NotificationsService {
     },
   ): Promise<boolean> {
     try {
-      const notification = await this.prisma.notification.create({
-        data: { recipientId, uniqueKey, ...input },
-        select: {
-          id: true,
-          type: true,
-          title: true,
-          body: true,
-          actionUrl: true,
-          createdAt: true,
-        },
-      });
-      for (const subscriber of this.subscribers.get(recipientId) ?? []) {
-        subscriber.next({ data: notification });
-      }
+      await this.create(recipientId, { ...input, uniqueKey });
       return true;
     } catch (error) {
       if (

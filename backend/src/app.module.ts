@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { ApplicationsModule } from './applications/applications.module';
 import { CollaborationModule } from './collaboration/collaboration.module';
+import { BackupsModule } from './backups/backups.module';
 import { AuthModule } from './auth/auth.module';
 import { RoleGuard } from './auth/role.guard';
 import { SessionAuthGuard } from './auth/session-auth.guard';
@@ -41,6 +42,7 @@ import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
     JobsModule,
     MailModule,
     AuthModule,
+    BackupsModule,
     NotificationsModule,
     ProfilesModule,
     ProjectsModule,

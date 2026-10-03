@@ -22,3 +22,11 @@ export const CurrentUser = createParamDecorator(
     return request.user;
   },
 );
+
+export const CurrentSession = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): string => {
+    return context
+      .switchToHttp()
+      .getRequest<Request & { currentSessionId: string }>().currentSessionId;
+  },
+);

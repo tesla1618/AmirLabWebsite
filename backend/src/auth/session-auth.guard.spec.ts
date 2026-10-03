@@ -6,6 +6,7 @@ jest.mock('../../generated/prisma/client', () => ({
 
 import type { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ExecutionContextHost } from '@nestjs/core/helpers/execution-context-host';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../database/prisma.service';
 import { resolveService } from '../../test/resolve-service';
@@ -39,7 +40,9 @@ function context(method: string, csrfToken?: string) {
   };
 }
 
-async function guard() {
+async function guard(
+  sessionState: { revokedAt?: Date; expiresAt?: Date } = {},
+) {
   return resolveService(SessionAuthGuard, [
     { provide: Reflector, useValue: { getAllAndOverride: () => false } },
     { provide: ConfigService, useValue: { get: () => 'amirl_session' } },
@@ -48,10 +51,13 @@ async function guard() {
       useValue: {
         session: {
           findUnique: jest.fn().mockResolvedValue({
+            id: 'current-session',
+            lastSeenAt: new Date(),
             csrfTokenHash: 'token-created-before-recovery-was-supported',
             expiresAt: new Date(Date.now() + 60_000),
             revokedAt: null,
             user,
+            ...sessionState,
           }),
         },
       },
@@ -60,6 +66,20 @@ async function guard() {
 }
 
 describe('SessionAuthGuard CSRF recovery', () => {
+  it.each([{ revokedAt: new Date() }, { expiresAt: new Date(0) }])(
+    'identifies an ended session with a stable API code',
+    async (state) => {
+      const { request } = context('GET');
+      const response: unknown = expect.objectContaining({
+        code: 'SESSION_INVALID',
+      });
+      await expect(
+        (await guard(state)).canActivate(new ExecutionContextHost([request])),
+      ).rejects.toMatchObject({
+        response,
+      });
+    },
+  );
   it('accepts the recoverable token for an existing session', async () => {
     const { executionContext, request } = context(
       'POST',
@@ -72,6 +92,7 @@ describe('SessionAuthGuard CSRF recovery', () => {
       ),
     ).resolves.toBe(true);
     expect(request).toHaveProperty('user', user);
+    expect(request).toHaveProperty('currentSessionId', 'current-session');
   });
 
   it('still rejects a mutation without a CSRF token', async () => {

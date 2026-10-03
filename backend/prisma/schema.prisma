@@ -662,8 +662,11 @@ model PushSubscription {
   updatedAt DateTime @updatedAt
   userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?  @db.Uuid
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+  @@index([sessionId])
 }
 
 model ProjectObjective {
@@ -1161,6 +1164,7 @@ model Asset {
 }
 
 model Session {
+  pushSubscriptions PushSubscription[]
   id            String    @id @default(uuid()) @db.Uuid
   tokenHash     String    @unique
   csrfTokenHash String

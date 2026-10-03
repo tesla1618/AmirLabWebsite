@@ -9,10 +9,16 @@ import {
 } from '@nestjs/websockets';
 import { createHash } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
+import type { Subscription } from 'rxjs';
+import { SessionManagementService } from '../auth/session-management.service';
 
-interface AuthenticatedSocket extends Socket {
-  data: { userId?: string };
-}
+type AuthenticatedSocket = Pick<
+  Socket,
+  'id' | 'emit' | 'join' | 'disconnect'
+> & {
+  data: { userId?: string; sessionId?: string };
+  handshake: Pick<Socket['handshake'], 'headers'>;
+};
 import { AccountStatus } from '../../generated/prisma/client';
 import type { Environment } from '../config/environment';
 import { PrismaService } from '../database/prisma.service';
@@ -25,6 +31,7 @@ import { PushService } from './push.service';
 export class CollaborationGateway {
   @WebSocketServer() server!: Server;
   private readonly logger = new Logger(CollaborationGateway.name);
+  private readonly sessionWatches = new Map<string, Subscription>();
   private readonly connections = new Map<string, number>();
 
   constructor(
@@ -33,12 +40,24 @@ export class CollaborationGateway {
     private readonly collaboration: CollaborationService,
     private readonly redis: RedisService,
     private readonly push: PushService,
+    private readonly sessions: SessionManagementService,
   ) {}
 
   async handleConnection(socket: AuthenticatedSocket) {
-    const user = await this.userForCookie(socket.handshake.headers.cookie);
-    if (!user) return socket.disconnect(true);
+    const authenticated = await this.userForCookie(
+      socket.handshake.headers.cookie,
+    );
+    if (!authenticated) return socket.disconnect(true);
+    const { user, sessionId } = authenticated;
     socket.data.userId = user.id;
+    socket.data.sessionId = sessionId;
+    this.sessionWatches.set(
+      socket.id,
+      this.sessions.invalidations(user.id, sessionId).subscribe(() => {
+        socket.emit('session.revoked');
+        socket.disconnect(true);
+      }),
+    );
     void socket.join(`user:${user.id}`);
     this.connections.set(user.id, (this.connections.get(user.id) ?? 0) + 1);
     await this.redis.setPresence(user.id);
@@ -46,6 +65,8 @@ export class CollaborationGateway {
   }
 
   async handleDisconnect(socket: AuthenticatedSocket) {
+    this.sessionWatches.get(socket.id)?.unsubscribe();
+    this.sessionWatches.delete(socket.id);
     const userId = socket.data.userId;
     if (!userId) return;
     const count = Math.max(0, (this.connections.get(userId) ?? 1) - 1);
@@ -63,7 +84,7 @@ export class CollaborationGateway {
       select: { userId: true },
     });
     for (const { userId } of members) {
-      this.server.to(`user:${userId}`).emit('message.created', message);
+      await this.emitForUser(userId, 'message.created', message);
     }
   }
 
@@ -86,14 +107,15 @@ export class CollaborationGateway {
     }
     for (const message of messages) {
       for (const userId of recipients.get(message.conversationId) ?? []) {
-        this.server.to(`user:${userId}`).emit('message.created', message);
+        await this.emitForUser(userId, 'message.created', message);
       }
     }
   }
 
   @SubscribeMessage('presence.heartbeat')
   async heartbeat(@ConnectedSocket() socket: AuthenticatedSocket) {
-    if (socket.data.userId) await this.redis.setPresence(socket.data.userId);
+    if (await this.activeSocket(socket))
+      await this.redis.setPresence(socket.data.userId ?? '');
   }
 
   @SubscribeMessage('message.send')
@@ -102,26 +124,39 @@ export class CollaborationGateway {
     @MessageBody()
     body: { conversationId?: string; body?: string; replyToId?: string },
   ) {
-    if (!socket.data.userId || !body?.conversationId) return;
+    if (
+      !(await this.activeSocket(socket)) ||
+      !socket.data.userId ||
+      !body?.conversationId
+    )
+      return;
     const message = await this.collaboration.sendMessage(
       socket.data.userId,
       body.conversationId,
       body.body ?? '',
       body.replyToId,
     );
-    const members = await this.prisma.conversationMember.findMany({
-      where: { conversationId: body.conversationId },
-      select: { userId: true },
-    });
-    await this.broadcastMessage(message);
-    void this.push.notifyUsers(
-      members.map(({ userId }) => userId),
-      {
-        title: message.sender.person?.fullName ?? 'AMIR Lab member',
-        body: message.body,
-        url: '/workspace/chat',
-      },
-    );
+    try {
+      const members = await this.prisma.conversationMember.findMany({
+        where: { conversationId: body.conversationId },
+        select: { userId: true },
+      });
+      await this.broadcastMessage(message);
+      await this.push.notifyUsers(
+        members.map(({ userId }) => userId),
+        {
+          title: message.sender.person?.fullName ?? 'AMIR Lab member',
+          body: message.body,
+          url: '/workspace/chat',
+        },
+      );
+    } catch (error) {
+      // The message is committed; do not leave the sender retrying a saved draft.
+      this.logger.error(
+        `Chat delivery failed for message ${message.id}`,
+        error instanceof Error ? error.stack : 'Unknown delivery failure',
+      );
+    }
     return message;
   }
 
@@ -130,7 +165,12 @@ export class CollaborationGateway {
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() body: { conversationId?: string; active?: boolean },
   ) {
-    if (!socket.data.userId || !body?.conversationId) return;
+    if (
+      !(await this.activeSocket(socket)) ||
+      !socket.data.userId ||
+      !body?.conversationId
+    )
+      return;
     await this.collaboration.assertMember(
       socket.data.userId,
       body.conversationId,
@@ -143,7 +183,7 @@ export class CollaborationGateway {
       select: { userId: true },
     });
     for (const { userId } of members)
-      this.server.to(`user:${userId}`).emit('typing', {
+      await this.emitForUser(userId, 'typing', {
         userId: socket.data.userId,
         active: Boolean(body.active),
       });
@@ -154,7 +194,13 @@ export class CollaborationGateway {
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() body: { messageId?: string; emoji?: string },
   ) {
-    if (!socket.data.userId || !body?.messageId || !body.emoji) return;
+    if (
+      !(await this.activeSocket(socket)) ||
+      !socket.data.userId ||
+      !body?.messageId ||
+      !body.emoji
+    )
+      return;
     const result = await this.collaboration.toggleReaction(
       socket.data.userId,
       body.messageId,
@@ -165,8 +211,42 @@ export class CollaborationGateway {
       select: { userId: true },
     });
     for (const { userId } of members)
-      this.server.to(`user:${userId}`).emit('message.reaction.changed', result);
+      await this.emitForUser(userId, 'message.reaction.changed', result);
     return result;
+  }
+
+  private async emitForUser(
+    userId: string,
+    event: string,
+    payload: unknown,
+  ): Promise<void> {
+    const sockets = await this.server.in(`user:${userId}`).fetchSockets();
+    for (const socket of sockets) {
+      const data: unknown = socket.data;
+      const sessionId =
+        data && typeof data === 'object' && 'sessionId' in data
+          ? data.sessionId
+          : undefined;
+      if (
+        typeof sessionId === 'string' &&
+        (await this.sessions.isActive(userId, sessionId))
+      ) {
+        socket.emit(event, payload);
+      } else socket.disconnect(true);
+    }
+  }
+
+  private async activeSocket(socket: AuthenticatedSocket): Promise<boolean> {
+    const { userId, sessionId } = socket.data;
+    if (
+      !userId ||
+      !sessionId ||
+      !(await this.sessions.isActive(userId, sessionId))
+    ) {
+      socket.disconnect(true);
+      return false;
+    }
+    return true;
   }
 
   private async userForCookie(cookieHeader?: string) {
@@ -177,14 +257,19 @@ export class CollaborationGateway {
       .find((part) => part.startsWith(`${cookieName}=`))
       ?.slice(cookieName.length + 1);
     if (!rawToken) return null;
+    let decodedToken: string;
+    try {
+      decodedToken = decodeURIComponent(rawToken);
+    } catch {
+      return null;
+    }
     const session = await this.prisma.session.findUnique({
       where: {
-        tokenHash: createHash('sha256')
-          .update(decodeURIComponent(rawToken))
-          .digest('hex'),
+        tokenHash: createHash('sha256').update(decodedToken).digest('hex'),
       },
       select: {
-        user: { select: { id: true, status: true } },
+        id: true,
+        user: { select: { id: true, status: true, isDeleted: true } },
         expiresAt: true,
         revokedAt: true,
       },
@@ -193,9 +278,10 @@ export class CollaborationGateway {
       !session ||
       session.revokedAt ||
       session.expiresAt <= new Date() ||
+      session.user.isDeleted ||
       session.user.status !== AccountStatus.ACTIVE
     )
       return null;
-    return session.user;
+    return { user: session.user, sessionId: session.id };
   }
 }
