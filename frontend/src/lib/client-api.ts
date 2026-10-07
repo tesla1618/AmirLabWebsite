@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "./api";
+import { API_URL } from "./api-url";
 import type { ReviewIssue } from "./review-issues";
 
 export class ApiRequestError extends Error {

@@ -26,7 +26,7 @@ import { ProfileAvatar } from "@/components/profile-avatar";
 import { IconButton } from "@/components/ui/icon-button";
 import { ButtonControl } from "@/components/ui/button-control";
 import { TextareaControl } from "@/components/ui/form-controls";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { cn } from "@/lib/cn";
 import { apiRequest } from "@/lib/client-api";
 import type {

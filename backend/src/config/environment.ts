@@ -1,4 +1,6 @@
 export interface Environment {
+  publicCacheRevalidationUrl?: string;
+  publicCacheRevalidationSecret?: string;
   databaseUrl: string;
   frontendOrigins: string[];
   publicSiteUrl: string;
@@ -32,6 +34,43 @@ export interface Environment {
 export function validateEnvironment(
   source: Record<string, unknown>,
 ): Environment {
+  const publicCacheRevalidationUrl = optionalValue(
+    source.PUBLIC_CACHE_REVALIDATION_URL,
+  );
+  const publicCacheRevalidationSecret = optionalValue(
+    source.PUBLIC_CACHE_REVALIDATION_SECRET,
+  );
+  if (
+    Boolean(publicCacheRevalidationUrl) !==
+    Boolean(publicCacheRevalidationSecret)
+  ) {
+    throw new Error(
+      'PUBLIC_CACHE_REVALIDATION_URL and PUBLIC_CACHE_REVALIDATION_SECRET must be configured together',
+    );
+  }
+  if (publicCacheRevalidationUrl) {
+    const url = new URL(publicCacheRevalidationUrl);
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== '/api/revalidate'
+    ) {
+      throw new Error(
+        'PUBLIC_CACHE_REVALIDATION_URL must be an HTTP(S) /api/revalidate endpoint without credentials, query or fragment',
+      );
+    }
+    if (
+      !publicCacheRevalidationSecret ||
+      publicCacheRevalidationSecret.length < 32
+    ) {
+      throw new Error(
+        'PUBLIC_CACHE_REVALIDATION_SECRET must contain at least 32 characters',
+      );
+    }
+  }
   const databaseUrl = requiredString(source, 'DATABASE_URL');
   const frontendOrigins = requiredString(source, 'FRONTEND_ORIGINS')
     .split(',')
@@ -125,6 +164,8 @@ export function validateEnvironment(
   }
 
   return {
+    publicCacheRevalidationUrl,
+    publicCacheRevalidationSecret,
     databaseUrl,
     frontendOrigins,
     publicSiteUrl,

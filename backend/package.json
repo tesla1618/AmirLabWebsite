@@ -26,7 +26,6 @@
     "db:stop": "node scripts/local-postgres.mjs stop",
     "db:status": "node scripts/local-postgres.mjs status",
     "db:cluster:reset": "node scripts/local-postgres.mjs reset",
-    "db:reset": "pnpm run db:rebuild",
     "db:generate": "prisma generate",
     "db:push": "node scripts/migrate-profile-entry-labels.mjs && node scripts/migrate-single-email.mjs && prisma db push && node scripts/migrate-research-system-accounts.mjs && prisma generate",
     "seed:validate": "tsx scripts/validate-seed-data.ts",
