@@ -12,7 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { apiRequest } from "@/lib/client-api";
 import type { NotificationRecord } from "@/lib/types";
 import {

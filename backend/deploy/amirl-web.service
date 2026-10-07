@@ -8,10 +8,12 @@ Type=simple
 User=amirl
 Group=amirl
 WorkingDirectory=/opt/amirl/frontend
+EnvironmentFile=-/etc/amirl/web.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:/home/amirl/.local/bin
+ExecStartPre=/usr/bin/env node --experimental-strip-types scripts/prepare-public-cache.mjs
 ExecStart=/usr/bin/env pnpm start
 Restart=on-failure
 RestartSec=5

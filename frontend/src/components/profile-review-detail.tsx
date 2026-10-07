@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import type { ProfileEditPayload, ProfileEditRequest } from "@/lib/types";
 import { ReviewActions } from "@/components/review-actions";

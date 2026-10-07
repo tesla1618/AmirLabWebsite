@@ -20,7 +20,7 @@ import {
 } from "@/components/workspace-record";
 import { apiRequest } from "@/lib/client-api";
 import { SemanticStatus } from "@/components/ui/semantic-status";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { CheckboxControl } from "@/components/ui/checkbox-control";
 import { FileInputControl, InputControl } from "@/components/ui/form-controls";
 import type { University } from "@/lib/types";

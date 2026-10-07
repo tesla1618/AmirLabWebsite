@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { ReviewActions } from "./review-actions";
 import { StatePanel } from "./state-panel";
 import { useAuth } from "./auth-provider";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { ApiRequestError, apiRequest } from "@/lib/client-api";
 import { Badge, type BadgeTone } from "./ui/badge";
 import { useNotifications } from "./notification-provider";

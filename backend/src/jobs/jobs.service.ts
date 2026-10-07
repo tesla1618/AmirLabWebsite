@@ -12,6 +12,8 @@ type JobHandler = (payload: Prisma.JsonValue) => Promise<void>;
 
 @Injectable()
 export class JobsService implements OnModuleInit, OnModuleDestroy {
+  private readonly settledListeners: Array<(type: string) => Promise<void>> =
+    [];
   private readonly handlers = new Map<string, JobHandler>();
   private readonly logger = new Logger(JobsService.name);
   private readonly workerId = randomUUID();
@@ -59,6 +61,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     for (const account of accounts) {
       try {
         await this.prisma.user.delete({ where: { id: account.id } });
+        await this.notifySettled('PURGE_DELETED_USERS');
       } catch (error) {
         if (isForeignKeyConstraintError(error)) {
           this.logger.warn(
@@ -69,6 +72,20 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         throw error;
       }
     }
+  }
+
+  private async notifySettled(type: string): Promise<void> {
+    for (const listener of this.settledListeners) {
+      await listener(type).catch((error: unknown) => {
+        this.logger.error(
+          `Job completion listener failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
+    }
+  }
+
+  onSettled(listener: (type: string) => Promise<void>): void {
+    this.settledListeners.push(listener);
   }
 
   register(type: string, handler: JobHandler): void {
@@ -194,6 +211,9 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           },
         });
         this.logger.error(`Job ${job.id} (${job.type}) failed: ${message}`);
+      } finally {
+        // A failed job may still have committed public changes before failing.
+        await this.notifySettled(job.type);
       }
     } finally {
       this.working = false;

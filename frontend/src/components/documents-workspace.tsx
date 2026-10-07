@@ -29,7 +29,7 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SelectControl } from "@/components/ui/select-control";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { apiRequest } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 

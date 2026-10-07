@@ -77,6 +77,18 @@ sudo -u amirl --preserve-env=DATABASE_URL,UPLOAD_ROOT pnpm --dir /opt/amirl/back
 On an empty first install only, seed the database and create the administrator.
 Never run `db:rebuild` on production data because it resets the database:
 
+`db:push` updates the schema and runs the compatibility migrations; it does not
+seed records. `db:seed` imports the canonical dataset into an empty application
+database and refuses if the checked application tables contain records. It also
+replaces the people, document-signature, and document-watermark folders under
+`UPLOAD_ROOT`. `db:verify` checks the fresh seed state and is not a production
+health check after users have edited or approved records.
+
+The local `db:start`, `db:stop`, `db:status`, and `db:cluster:reset` commands
+manage `backend/.postgres`; they do not manage the production PostgreSQL
+system service. See the [database command reference](../../README.md#database-commands)
+for the complete list.
+
 ```bash
 sudo -u amirl --preserve-env=DATABASE_URL,UPLOAD_ROOT pnpm --dir /opt/amirl/backend run db:seed
 sudo -u amirl --preserve-env=DATABASE_URL pnpm --dir /opt/amirl/backend run admin:create
