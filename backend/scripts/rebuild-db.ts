@@ -92,6 +92,7 @@ export async function rebuildDatabase() {
     const admin = await prisma.user.create({
       data: {
         activatedAt: new Date(),
+        email: adminEmail,
         passwordHash,
         passwordSetAt: new Date(),
         role: PlatformRole.ADMIN,
