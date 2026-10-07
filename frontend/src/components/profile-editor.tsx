@@ -18,7 +18,7 @@ import { useAuth } from "@/components/auth-provider";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useNotifications } from "@/components/notification-provider";
 import { StatePanel } from "@/components/state-panel";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { apiRequest } from "@/lib/client-api";
 import type {
   MyProfile,

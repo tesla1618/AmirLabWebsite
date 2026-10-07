@@ -1,3 +1,4 @@
+import { PublicCacheModule } from './public-cache/public-cache.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -40,6 +41,7 @@ import { WeeklyReportsModule } from './weekly-reports/weekly-reports.module';
     DocumentsModule,
     UniversitiesModule,
     JobsModule,
+    PublicCacheModule,
     MailModule,
     AuthModule,
     BackupsModule,

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import type { Person } from "@/lib/types";

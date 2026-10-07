@@ -13,17 +13,31 @@ It is intentionally **schema-shaped**, not a dump of the live HTML. AMIRL's curr
 
 ## Runtime images
 
-Do not link the source images directly from the application. `pnpm run db:rebuild` processes available originals through Sharp and creates WebP `Asset` files under `storage/peoples/`, then attaches those assets to the imported `Person` records.
+Do not link the source images directly from the application. Seeding processes available originals through Sharp and creates WebP `Asset` files under `storage/peoples/` (or the configured `UPLOAD_ROOT`). These assets are staged on profile review requests; they are not published on imported `Person` records before approval.
 
 Three current people do not have an image in the supplied source set, so they intentionally rebuild with `avatarId = null`.
 
 ## Validation
+
+Run these commands from the repository root or `backend/`:
 
 ```bash
 pnpm run seed:validate
 pnpm run db:rebuild
 pnpm run db:verify
 ```
+
+- `seed:validate` checks the JSON structure, references, and avatar source files without accessing the database.
+- `db:rebuild` **deletes existing application database data**, imports the canonical seed, and runs `db:verify` automatically. It also starts the private local PostgreSQL server.
+- `db:verify` can be run separately to check the fresh import, including pending reviews, draft positions, contributor provenance, and stored avatars. It can fail after normal edits or approvals because it expects the original seed state.
+
+To import into an already prepared empty database, use `db:seed` instead of
+`db:rebuild`. It does not reset the schema and refuses if the checked
+application tables contain records. It replaces the people, document-signature,
+and document-watermark storage folders before importing assets.
+
+See the [database command reference](../../README.md#database-commands) for
+schema updates, cluster management, and the Docker workflow.
 
 ## Credentials and tokens
 
@@ -47,7 +61,7 @@ repository.
 ## Normalization decisions
 
 - The public team page supplies current roster/category/affiliation facts; detailed profile tabs are converted into `profileSections` rather than stored as raw HTML.
-- The live Open Positions page is converted into five `Position` records with explicit `OPEN` / `CLOSED` status and schema rank/type values.
+- Source positions are converted into `Position` records with schema rank/type values and `DRAFT` status. Opening a position requires a manual decision after import.
 - The Volunteer Internship Program and the image-only Achievement page are preserved as reviewed `SiteSetting` content (`site.training-programs` and `site.achievement`).
 - The older Founder Message page contains role/publication counts that conflict with the newer founder profile. It is retained in source provenance but is **not** allowed to overwrite the newer person record.
 - The home page currently shows three "Collaborated Universities" as unlabeled images. No `University` records are invented from those images because the live HTML does not provide reliable names or identifiers.

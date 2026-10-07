@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { publicShellWidthClass } from "@/components/ui/public-shell";
-import { API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api-url";
 import { cn } from "@/lib/cn";
 import { loadingPlaceholder } from "@/lib/loading-style";
 import type { University } from "@/lib/types";
